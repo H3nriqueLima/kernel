@@ -1,0 +1,5 @@
+# Núcleo: o serviço, a memória, as mãos, o classificador de comandos e a mente.
+# (O cérebro treinado roda no dia a dia só com NumPy; PyTorch é para treinar.)
+numpy>=2.0
+fastapi>=0.110
+uvicorn>=0.29

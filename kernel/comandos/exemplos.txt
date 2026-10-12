@@ -1,0 +1,441 @@
+# Exemplos que ensinam o classificador de comandos.
+#
+# Uma frase por linha, embaixo do nome da intenção. Para ensinar algo novo,
+# acrescente frases aqui (ou use: python -m kernel comandos ensinar "frase" intencao)
+# e treine de novo: python -m kernel comandos treinar
+
+[abrir_programa]
+abre a calculadora
+abra o bloco de notas
+abrir o paint
+abre o chrome
+abre o navegador
+abra o explorador de arquivos
+abre o hl finance
+abrir hl finance
+inicia o spotify
+inicie o word
+iniciar o excel
+executa o visual studio code
+execute o gerenciador de tarefas
+executar o photoshop
+roda o vs code
+rode o steam
+pode abrir o chrome pra mim
+você pode abrir a calculadora
+abre o discord por favor
+quero abrir o excel
+preciso abrir o word
+abre aí o bloco de notas
+abre o firefox
+abra o edge
+abre o whatsapp
+kernel, abre a calculadora
+kernel abre o chrome
+abre o terminal
+abrir o powershell
+abre o obs
+lança o steam
+abre o programa hl finance
+abre o aplicativo de fotos
+inicia a calculadora pra mim
+abre o vlc
+executa o paint
+abre o painel de controle
+abra o gerenciador de tarefas por favor
+abre o telegram
+abrir calculadora
+abrir chrome
+abre notepad
+bota o spotify pra abrir
+abre o outlook
+liga o obs
+
+[listar_pasta]
+lista a pasta downloads
+liste a pasta documentos
+listar a pasta de downloads
+lista os arquivos da área de trabalho
+o que tem na pasta downloads
+o que tem na minha área de trabalho
+o que tem nos meus documentos
+mostra os arquivos da pasta documentos
+mostre o conteúdo da pasta downloads
+mostra o que tem em downloads
+quais arquivos estão na pasta downloads
+quais arquivos tem na área de trabalho
+lista os arquivos do projeto
+me mostra a pasta de imagens
+lista o conteúdo de C:\Users\henri\Downloads
+listar C:\Users\henri\Documents
+o que tem em Z:\projetos
+lista C:\Windows
+mostra o que tem em D:\Fotos
+mostra a pasta do projeto
+lista meus downloads
+lista meus documentos
+ver arquivos da pasta vídeos
+ver a pasta de músicas
+quero ver o que tem na pasta downloads
+me diz o que tem na área de trabalho
+quais são os arquivos da pasta imagens
+lista a pasta
+listar pasta downloads
+listar arquivos
+mostra os arquivos do desktop
+o que tem no desktop
+conteúdo da pasta documentos
+lista tudo que está em downloads
+mostra meus arquivos de downloads
+kernel, lista a pasta downloads
+quais pastas tem em documentos
+exibe os arquivos da pasta do projeto
+exibir conteúdo da pasta downloads
+olha a pasta downloads e me diz o que tem
+tem o que na pasta de vídeos
+arquivos da área de trabalho
+abre a pasta documentos
+abrir a pasta de imagens
+abre minha pasta de músicas
+
+[anotar_lembrete]
+me lembra de pagar o boleto amanhã
+me lembre de ligar para o contador
+lembra de comprar pão
+lembre-me de enviar o relatório às 15h
+anota aí: reunião com o cliente sexta
+anota que o servidor reinicia toda segunda
+anote que a senha do wifi mudou
+anotar lembrete: trocar o óleo do carro
+cria um lembrete para tomar o remédio às 22h
+crie um lembrete de ir ao banco amanhã
+me lembra em 20 minutos de tirar a comida do forno
+me lembra daqui a uma hora de beber água
+lembra que amanhã tem dentista às 10h
+guarda isso: o código do portão mudou
+guarda que o carro está na oficina
+memoriza que eu prefiro café sem açúcar
+registra que paguei a conta de luz hoje
+me avisa às 18h para fechar o caixa
+me avise amanhã de manhã para ligar pro banco
+não me deixa esquecer de renovar o domínio
+preciso lembrar de mandar o e-mail para o João
+lembrete: backup do hl finance toda sexta
+anota um lembrete de comprar um ssd
+me lembra de estudar backpropagation hoje à noite
+lembra de treinar o cérebro de madrugada
+kernel, me lembra de pagar o aluguel dia 5
+anota: comprar memória ram
+me lembra disso amanhã
+lembre de cobrar o cliente na segunda
+anota pra mim que o prazo é dia 20
+quero um lembrete para as 9h
+marca um lembrete de reunião às 14h30
+agenda um lembrete para amanhã às 8h
+me lembra de desligar o pc
+me lembra às 7 de acordar
+lembra de levar o lixo
+guarda aí que o fornecedor liga na quinta
+anote: aniversário da mãe dia 12
+me lembre de atualizar o windows no fim de semana
+não esquece de me lembrar da consulta
+toma nota: a senha nova do roteador está no caderno
+me avisa em 10 minutos
+me lembra de fazer backup
+cria lembrete pagar internet
+adiciona um lembrete de comprar café
+
+[consultar_memoria]
+o que você lembra sobre o cliente
+o que você sabe sobre o hl finance
+o que eu te falei sobre o servidor
+você lembra do código do portão
+lembra o que eu disse sobre o boleto
+quais são meus lembretes
+quais lembretes eu tenho
+mostra meus lembretes
+lista meus lembretes
+tenho algum lembrete para hoje
+o que eu tenho pra fazer hoje
+o que eu anotei sobre a reunião
+busca na memória por contador
+procura na memória o que eu falei do banco
+pesquisa na sua memória por wifi
+o que tem na sua memória sobre o carro
+qual era a senha do wifi que eu te falei
+quando é o dentista
+o que eu falei ontem
+o que conversamos sobre o projeto
+você se lembra do que eu disse sobre café
+me diz o que você sabe sobre mim
+o que você guardou sobre o fornecedor
+tem alguma anotação sobre o aluguel
+quais são meus compromissos
+o que eu pedi para lembrar
+me mostra o que você anotou
+lembretes pendentes
+meus lembretes
+o que ficou anotado sobre o prazo
+procura nas memórias por relatório
+busca lembranças sobre o treino
+o que você lembra de ontem
+qual foi a última coisa que eu anotei
+recupera o que eu disse sobre o domínio
+você tem algo guardado sobre o joão
+me lembra o que eu falei sobre o ssd
+o que eu disse que preferia
+consulta a memória sobre impostos
+tem lembrete de pagar o boleto
+
+[sobre_si]
+quem é você
+o que você é
+qual é o seu nome
+o que você sabe fazer
+o que você consegue fazer
+me ajuda
+ajuda
+como você funciona
+como você está
+como você está se sentindo
+qual o seu estado
+quais são seus impulsos
+você está curioso
+o que significa kernel
+o que significa o seu nome
+quais ferramentas você tem
+quais comandos você entende
+do que você é feito
+você tem cérebro
+quantos parâmetros você tem
+seu cérebro já foi treinado
+você está me ouvindo
+status
+como está sua memória
+quantas memórias você tem
+você é o jarvis
+se apresenta
+se apresente
+fala sobre você
+o que você pode fazer por mim
+
+[conversa]
+oi
+olá
+bom dia
+boa tarde
+boa noite
+e aí, tudo bem
+tudo bem
+obrigado
+valeu
+muito obrigado pela ajuda
+tchau
+até amanhã
+hoje o dia foi cansativo
+estou com sono
+acho que vou dormir cedo hoje
+o trabalho hoje foi puxado
+hoje fechei três clientes novos
+o que você acha de inteligência artificial
+me conta uma curiosidade
+fala alguma coisa
+conta uma piada
+estou pensando em comprar uma placa de vídeo nova
+o pc está lento hoje
+gostei do filme que vi ontem
+vou almoçar agora
+voltei
+cheguei em casa
+está chovendo muito aqui
+o cliente gostou do sistema
+terminei o relatório
+amanhã vai ser corrido
+não sei o que fazer hoje
+estou estudando álgebra linear
+assisti a aula do karpathy
+o treino do modelo demorou bastante
+a perda caiu para dois
+abri a janela porque estava calor
+ontem abri uma conta no banco
+a lista de compras ficou enorme
+esqueci de almoçar hoje
+lembrei de uma música antiga
+a pasta de dente acabou
+gosto de programar à noite
+python é minha linguagem favorita
+qual sua opinião sobre isso
+legal
+entendi
+certo
+ok
+sim
+não
+talvez
+haha
+interessante
+continua
+pode falar
+vamos conversar
+estou entediado
+escreve um texto sobre o mar
+era uma vez
+o brasil é um país
+a história da computação começou
+bom trabalho
+você é legal
+isso foi rápido
+funcionou
+deu erro
+não era isso
+o fornecedor atrasou a entrega de novo
+o servidor caiu duas vezes hoje
+preciso trocar o pneu do carro
+preciso descansar um pouco
+o backup de ontem demorou muito
+o cliente pagou o boleto atrasado
+o banco fechou mais cedo
+a reunião de hoje foi longa
+o contador mandou os impostos
+minha internet caiu de novo
+o carro ficou pronto na oficina
+comprei um ssd novo
+o windows atualizou sozinho
+minha calculadora quebrou
+o chrome está consumindo muita memória
+o excel travou no meio da planilha
+os arquivos do cliente chegaram
+a pasta do projeto está uma bagunça
+baixei muitos arquivos hoje
+o dentista remarcou a consulta
+o aluguel subiu esse mês
+o relatório ficou bom
+meu amigo abriu uma loja
+o joão ligou mais cedo
+tenho muita coisa para fazer
+
+[pergunta]
+o que é astronomia
+o que é um buraco negro
+o que é backpropagation
+o que é a wikipédia
+o que são vitaminas
+o que foi a revolução francesa
+o que significa democracia
+quem foi santos dumont
+quem é albert einstein
+quem foi dom pedro segundo
+quem descobriu o brasil
+quem inventou o telefone
+quem foi o primeiro presidente do brasil
+onde fica a argentina
+onde fica o monte everest
+onde é a capital do brasil
+qual é a capital da frança
+qual é a capital do japão
+qual é o maior planeta do sistema solar
+qual foi a primeira guerra mundial
+quando foi a independência do brasil
+quando aconteceu a segunda guerra mundial
+me fala sobre o brasil
+me fale sobre a lua
+me conta sobre a história de portugal
+me explica o que é um transformer
+me explica a fotossíntese
+explica o que é inflação
+como funciona uma rede neural
+como funciona um motor a combustão
+por que o céu é azul
+você sabe o que é um átomo
+sabe quem foi machado de assis
+defina energia
+significado de filosofia
+kernel, o que é o oceano atlântico
+quais são os planetas do sistema solar
+fala sobre a amazônia
+
+[procurar_arquivo]
+onde está o arquivo do contrato
+onde está a planilha de custos
+onde fica o arquivo de orçamento
+procura o arquivo relatório mensal
+procure o pdf do boleto
+acha o arquivo do currículo
+ache a planilha de clientes
+encontra o documento do contrato do joão
+localiza o arquivo de backup
+tem algum arquivo sobre o cliente
+tem algum arquivo chamado orçamento
+tem algum pdf de nota fiscal
+cadê o arquivo da proposta
+cadê a planilha de despesas
+em que pasta está o contrato de aluguel
+em qual pasta fica o relatório
+qual arquivo fala de impostos
+quais arquivos falam do fornecedor
+você viu algum arquivo de contrato
+você achou algum arquivo sobre o projeto
+busca arquivos com o nome fatura
+procura nos meus arquivos por garantia
+onde eu salvei a apresentação
+me acha o documento da reunião
+existe algum arquivo de planejamento
+quais planilhas eu tenho
+quais pdfs você viu
+procura um arquivo chamado notas
+kernel, onde está o arquivo do orçamento
+acha pra mim o contrato social
+
+[sistema]
+como está o pc
+como está o computador
+quanto espaço livre tem no disco
+quanto espaço eu tenho no hd
+quanta memória ram eu tenho
+quanta memória está livre
+qual é o meu processador
+qual é a minha placa de vídeo
+qual a configuração do pc
+me fala as especificações do computador
+o disco está cheio
+tem espaço no disco z
+quanto de ram está sobrando
+quais discos eu tenho
+que windows eu uso
+qual é o nome do computador
+como estão os discos
+qual o hardware dessa máquina
+me mostra as informações do sistema
+informações do pc
+espaço em disco
+uso de memória
+kernel, quanto espaço tem no disco c
+em que máquina você mora
+onde você mora
+
+[descobertas]
+o que você descobriu
+o que você aprendeu hoje
+o que você encontrou no pc
+o que você já explorou
+o que você achou explorando
+me conta o que você viu
+me fala o que você aprendeu
+como vai a exploração
+como está a exploração
+quanto você já explorou
+quantos arquivos você já viu
+quantas pastas você já visitou
+o que tem de interessante no meu pc
+o que você andou fazendo
+o que você fez enquanto eu estava fora
+me dá um resumo do que você explorou
+relatório da exploração
+novidades
+alguma novidade
+o que você sabe sobre meus arquivos
+quais assuntos aparecem nos meus arquivos
+o que você leu hoje
+quantos arquivos você leu
+kernel, o que você descobriu hoje
+me atualiza sobre a exploração

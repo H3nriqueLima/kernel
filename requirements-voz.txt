@@ -1,0 +1,2 @@
+# Ouvidos: captura do microfone para a palavra de ativação.
+sounddevice

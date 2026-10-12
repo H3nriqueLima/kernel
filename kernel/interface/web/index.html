@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05080c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>K.E.R.N.E.L</title>
+  <link rel="manifest" href="/web/manifest.webmanifest">
+  <link rel="icon" href="/web/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/web/icone-192.png">
+  <link rel="stylesheet" href="/web/estilo.css?v=__MARCA__">
+</head>
+<body>
+  <header class="topo">
+    <span class="situacao" id="situacao">conectando…</span>
+    <nav class="botoes">
+      <button class="icone" id="som" title="Voz ligada" aria-label="Ligar ou desligar a voz">
+        <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="mudo" d="M16 9l5 6M21 9l-5 6"/></svg>
+      </button>
+      <button class="icone" id="pausa" title="Parar a autonomia" aria-label="Parar ou continuar a autonomia">
+        <svg viewBox="0 0 24 24"><path class="parar" d="M8 5v14M16 5v14"/><path class="seguir" d="M7 5l12 7-12 7z"/></svg>
+      </button>
+      <button class="icone" id="menu" title="Detalhes" aria-label="Abrir os detalhes">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main class="palco">
+    <div class="orbe"><canvas id="orbe" aria-hidden="true"></canvas></div>
+    <div class="falas" id="falas" aria-live="polite"></div>
+  </main>
+
+  <form class="entrada" id="entrada">
+    <textarea id="texto" rows="1" placeholder="Fale com o K.E.R.N.E.L" autocomplete="off" enterkeyhint="send"></textarea>
+    <button type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24"><path d="M5 12h13M12 6l6 6-6 6"/></svg></button>
+  </form>
+
+  <aside class="gaveta" id="gaveta" hidden>
+    <div class="gaveta-topo">
+      <h2>K.E.R.N.E.L</h2>
+      <button class="icone" id="fechar" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="gaveta-corpo">
+      <div class="faixa" id="modo-seguro" hidden></div>
+
+      <section>
+        <h3>Autonomia</h3>
+        <p id="autonomia-texto">—</p>
+        <p class="rotulo">Pastas que ele pode ver</p>
+        <ul class="pastas" id="pastas"></ul>
+        <p class="dica">Para mudar as pastas ou desligar a exploração, edite <code>kernel.toml</code> e reinicie. Ele só olha: nunca escreve, apaga ou abre nada sozinho.</p>
+      </section>
+
+      <section>
+        <h3>Mente</h3>
+        <div id="impulsos"></div>
+      </section>
+
+      <section>
+        <h3>Órgãos</h3>
+        <dl class="orgaos">
+          <div><dt>Cérebro</dt><dd id="orgao-cerebro">—</dd></div>
+          <div><dt>Saber</dt><dd id="orgao-saber">—</dd></div>
+          <div><dt>Memória</dt><dd id="orgao-memoria">—</dd></div>
+          <div><dt>Ouvidos</dt><dd id="orgao-ouvidos">—</dd></div>
+          <div><dt>Internet</dt><dd id="orgao-internet">—</dd></div>
+        </dl>
+      </section>
+
+      <section id="secao-celular" hidden>
+        <h3>Celular</h3>
+        <p id="celular-texto">—</p>
+        <button class="botao" id="gerar-codigo">Parear um celular</button>
+        <p class="codigo" id="codigo-de-pareamento" hidden></p>
+        <ul class="aparelhos" id="aparelhos"></ul>
+      </section>
+
+      <section>
+        <div class="abas" role="tablist">
+          <button class="aba ativa" data-aba="registro" role="tab">Registro</button>
+          <button class="aba" data-aba="diario" role="tab">Diário</button>
+        </div>
+        <ol class="registro" id="registro"></ol>
+        <div id="aba-diario" hidden>
+          <button class="botao" id="escrever-diario">Escrever sobre hoje agora</button>
+          <pre class="diario" id="diario">Ainda não há diário.</pre>
+        </div>
+      </section>
+
+      <section>
+        <button class="botao perigo" id="desligar">Desligar o K.E.R.N.E.L</button>
+        <p class="dica" id="versao"></p>
+      </section>
+    </div>
+  </aside>
+
+  <div class="tela-cheia" id="parear" hidden>
+    <form id="form-parear">
+      <canvas class="mini-orbe" width="96" height="96" aria-hidden="true"></canvas>
+      <h2>Parear com o K.E.R.N.E.L</h2>
+      <p>No PC, abra o menu ≡, toque em “Parear um celular” e digite aqui o código de 6 dígitos.</p>
+      <input id="codigo" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required>
+      <input id="nome-aparelho" maxlength="40" placeholder="Nome deste aparelho" value="Meu celular">
+      <button class="botao" type="submit">Parear</button>
+      <p class="erro" id="erro-parear"></p>
+    </form>
+  </div>
+
+  <div class="tela-cheia" id="cortina" hidden>
+    <div>
+      <h2>K.E.R.N.E.L desligado</h2>
+      <p>Para ligar de novo, rode <code>iniciar.bat</code> no PC.</p>
+    </div>
+  </div>
+
+  <script>window.KERNEL_CODIGO = "__CODIGO__"; window.KERNEL_LOCAL = __LOCAL__;</script>
+  <script src="/web/orbe.js?v=__MARCA__"></script>
+  <script src="/web/app.js?v=__MARCA__"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+# Configuração do K.E.R.N.E.L (modelo).
+# Copie este arquivo para "kernel.toml" e mude o que quiser (o instalar.ps1 faz a cópia).
+# O "kernel.toml" é a SUA configuração: fica só no seu PC, fora do Git.
+# Tudo aqui é opcional: o que você não escrever vale o padrão de kernel/config.py.
+# Depois de mudar, reinicie o serviço (desligar.bat e iniciar.bat).
+
+usuario = "Henrique"
+
+# ------------------------------------------------------------------------------
+# ATÉ ONDE ELE PODE IR
+# ------------------------------------------------------------------------------
+
+[seguranca]
+# Tudo o que ele pode ver. É nestas pastas (e só nelas) que ele lista arquivos
+# quando você pede e que ele explora sozinho. Aceita caminhos completos ou:
+# {area de trabalho} {documentos} {downloads} {imagens} {musicas} {videos} {projeto}
+pastas_permitidas = ["{area de trabalho}", "{documentos}", "{downloads}", "{projeto}"]
+
+# 0 = toda ação das mãos pede confirmação. Abrir programa pede sempre.
+confirmar_a_partir_de = 0
+
+[exploracao]
+ligada = true          # true = ele olha as pastas acima por conta própria. false = nunca olha sozinho.
+ler_arquivos = true    # true = lê o texto dos arquivos. false = só vê os nomes.
+ritmo = "normal"       # calmo | normal | intenso
+
+# Pedaços de nome que ele sempre pula, além dos de fábrica (senha, password, token,
+# .ssh, .env, appdata...). Exemplo: nunca = ["confidencial", "pessoal"]
+nunca = []
+
+# Ele só olha: não existe no código dele nada que escreva, mova ou apague arquivos seus.
+# Para parar na hora, diga "para" no chat (ou toque no botão de pausa).
+# Para ele voltar, diga "pode continuar".
+
+[internet]
+ligada = false            # true = ele pode ler a internet. false = nunca sai do PC, nem quando você pede.
+pesquisar_sozinho = true  # true = pesquisa por conta própria quando está ocioso. false = só quando você pede.
+buscador = true           # true = além da Wikipédia, usa um buscador (DuckDuckGo) e lê as páginas que achar.
+
+# Assuntos que você quer que ele estude por conta própria. Exemplo:
+# interesses = ["inteligência artificial", "finanças pessoais", "astronomia"]
+interesses = []
+
+# false = ele NÃO pesquisa o que viu nos seus arquivos. Com true, os assuntos que mais se
+# repetem nos arquivos viram pesquisa, e essas palavras saem do PC para a Wikipédia e o buscador.
+assuntos_dos_arquivos = false
+
+sites_proibidos = []      # sites que ele nunca abre. Exemplo: ["exemplo.com"]
+paginas_por_hora = 30     # teto de pedidos por hora quando ele pesquisa sozinho
+
+# Na internet ele só lê: não entra em conta, não preenche formulário, não baixa arquivo e
+# não usa os seus navegadores (é lá que estão as suas contas abertas). Cada endereço que ele
+# abre fica no registro (linhas do tipo "internet"). O freio é o mesmo: "para".
+
+[celular]
+ligado = false         # true = atende também na rede local, para você parear o celular.
+                       # A conversa pela rede vai sem criptografia: use só no Wi-Fi de casa.
+
+# ------------------------------------------------------------------------------
+# O RESTO
+# ------------------------------------------------------------------------------
+
+[nucleo]
+porta = 8765
+intervalo_laco = 5.0   # segundos entre as voltas do laço de autonomia
+autonomia = true       # false = ele só responde: sem exploração, perguntas ou relatos
+
+[voz]
+ligada = true
+# difones   = voz gravada (leitora do LibriVox), colada por difones com PSOLA
+# formantes = a voz de máquina gerada por regra (também é a reserva dos difones)
+# aparelho  = a voz do navegador ou do celular
+motor = "difones"
+estilo = "natural"     # natural | robotica (cada vogal numa nota fixa, sem deslizar)
+altura = 1.0           # difones: 1.0 = o tom da gravação; 1.1 = mais aguda; 0.9 = mais grave
+velocidade = 1.0       # 1.0 = o ritmo da leitora; 0.7 = bem mais devagar
+tom = 112.0            # formantes: altura da voz em Hz (menor = mais grave)
+
+[maos]
+atalhos_menu_iniciar = true
+
+# Programas que ele pode abrir, além dos atalhos do Menu Iniciar.
+# Exemplo: "meu programa" = 'C:\Caminho\Para\Programa.exe'
+[maos.programas]
+"calculadora" = "calc.exe"
+"bloco de notas" = "notepad.exe"
+
+[cerebro]
+dispositivo = "auto"   # auto | directml | cuda | cpu
+tamanho = "mini"       # nano | mini | pequeno
+temperatura = 0.8
+max_tokens = 60
+
+[ouvidos]
+ativo = true
+palavra = "kernel"     # a palavra que você grava para chamar por ele
+limiar = 0.85
+microfone = -1         # -1 = o padrão do Windows (veja: python -m kernel ouvidos microfones)
+
+[mente]
+limiar_impulso = 0.6
+curiosidade_por_minuto = 0.04
+organizacao_por_memoria = 0.05
+minutos_entre_perguntas = 20
+minutos_entre_relatos = 30
+hora_do_diario = 23

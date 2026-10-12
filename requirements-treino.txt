@@ -1,0 +1,4 @@
+# Treino do cérebro na RX 570 (Windows + DirectML).
+# O torch-directml só existe até o Python 3.12 e traz junto o torch 2.4.1.
+torch-directml
+tensorboard

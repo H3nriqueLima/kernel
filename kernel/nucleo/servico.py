@@ -1,0 +1,887 @@
+"""O núcleo do K.E.R.N.E.L.
+
+Ele liga os órgãos e faz duas coisas:
+
+- ``receber``: trata uma mensagem sua. Primeiro os reflexos (o freio "para",
+  hora, contas, cumprimentos); depois o classificador decide a intenção: os
+  comandos viram pedidos para as mãos (que passam pela segurança), as perguntas
+  vão para a enciclopédia e a memória, e a conversa é guardada.
+- ``volta``: uma volta do laço de autonomia, que roda sozinho a cada poucos
+  segundos: perceber, lembrar, avaliar, decidir, agir, refletir. É aqui que ele
+  explora o PC por conta própria, pergunta o que não conhece e conta o que achou.
+
+Tudo o que acontece é anotado no registro.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+import secrets
+import threading
+from datetime import datetime, timedelta
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from .. import NOME, NOME_COMPLETO, VERSAO, comandos
+from ..cerebro import inferencia
+from ..comandos import calculo, extrair
+from ..conhecimento import Enciclopedia, assunto_da_pergunta
+from ..exploracao import Explorador, Mapa, sistema
+from ..internet import Pesquisador
+from ..internet.pesquisador import resumo
+from ..maos import AbrirPagina, AbrirPrograma, AnotarLembrete, ErroFerramenta, ListarPasta, Maos
+from ..memoria import Memoria
+from ..memoria.texto import PARADAS, normalizar, radical, termos
+from ..mente import Diario, Impulsos, Percepcao
+from ..registro import Registro
+from ..seguranca import ErroSeguranca, Seguranca, integridade
+from ..seguranca.aparelhos import Aparelhos
+from . import reflexos
+from .estudo import EstudarWikipedia, Estudo, TreinarCerebro
+
+# Palavras que fazem parte da pergunta ("o que você LEMBRA SOBRE...") e não do assunto.
+_ANDAIME = {radical(p) for p in """lembra lembrar lembro sabe saber falei falou disse dizer diz memoria
+    memorias busca buscar procura procurar pesquisa pesquisar guardou guardado anotei anotou anotado
+    anotacao conversamos recupera consulta algo alguma ultima coisa mostra lembranca lembrancas
+    ficou pedi era tenho""".split()}
+_ANDAIME_DE_ARQUIVO = {radical(p) for p in """onde esta fica salvei procura procure procurar acha ache achar
+    encontra encontre localiza localize busca busque cade tem existe algum alguma viu achou pasta qual quais
+    arquivo arquivos chamado nome fala falam kernel pra mim meus minhas tenho eu voce em que nos por""".split()}
+_TIPOS_DE_ARQUIVO = {"planilha": "xlsx", "planilhas": "xlsx", "pdfs": "pdf", "documento": "docx",
+                     "documentos": "docx", "foto": "jpg", "fotos": "jpg", "apresentacao": "pptx"}
+_DESISTENCIAS = {"nao sei", "deixa", "deixa pra la", "esquece", "nada", "depois", "nao importa", "pula"}
+_MINUTOS_DE_ESPERA_DA_PERGUNTA = 30
+_SEGUNDOS_ENTRE_PULSOS = 600
+_SOSSEGO_PARA_EXPLORAR = 30   # segundos sem você falar antes de ele sair explorando
+_VOLTAS_POR_FOLEGO = 20
+_CUSTO_DE_PESQUISAR = 0.15    # curiosidade gasta em cada assunto pesquisado na internet
+# ritmo -> (passos de exploração por volta do laço, curiosidade gasta em cada fôlego)
+_RITMOS = {"calmo": (1, 0.5), "normal": (3, 0.35), "intenso": (8, 0.1)}
+_CONFIRMACOES = ("Guardei.", "Anotado na memória.", "Entendi, guardei.")
+
+
+def _como_voce_escreveu(texto: str, assunto: str) -> str:
+    """O mesmo assunto, com os acentos e as maiúsculas da sua frase (é assim que ele pesquisa e mostra)."""
+    originais = re.sub(r"[^\w\s]", " ", texto).split()
+    planas = [normalizar(palavra) for palavra in originais]
+    alvo = assunto.split()
+    for i in range(len(planas) - len(alvo) + 1):
+        if planas[i:i + len(alvo)] == alvo:
+            return " ".join(originais[i:i + len(alvo)])
+    return assunto
+
+
+def _site(url: str) -> str:
+    """De um endereço, só o nome do site (para citar a fonte)."""
+    return (urlsplit(url).hostname or url).removeprefix("www.")
+
+
+class Kernel:
+    def __init__(self, cfg, relogio=datetime.now, lancar=None, transporte=None, resolver=None):
+        self.cfg = cfg
+        self._relogio = relogio
+        self.iniciado_em = relogio()
+        self.sessao = secrets.token_hex(4)       # muda a cada partida: a página sabe que os números recomeçaram
+
+        self.registro = Registro(cfg.pasta("registro"), relogio)
+        self.memoria = Memoria(cfg.dados / "kernel.db", relogio)
+        self.seguranca = Seguranca(cfg, self.registro)
+        integro, mudancas = integridade.verificar()
+        if not integro:
+            self.seguranca.entrar_em_modo_seguro("o código de segurança mudou: " + "; ".join(mudancas))
+        self.aparelhos = Aparelhos(cfg.dados / "aparelhos.json", self.registro)
+        self.estudo = Estudo(cfg, self.registro, self._estudo_terminou)
+        self.maos = Maos(self.seguranca, self.registro, [
+            AbrirPrograma(cfg, lancar),
+            AbrirPagina(lancar),
+            ListarPasta(cfg, self.seguranca),
+            AnotarLembrete(self.memoria),
+            EstudarWikipedia(self.estudo),
+            TreinarCerebro(self.estudo),
+        ])
+        self.classificador = comandos.garantir(cfg)
+        self.cerebro = inferencia.carregar(cfg)  # None enquanto não houver cérebro treinado
+        self.enciclopedia = Enciclopedia(cfg.dados / "conhecimento.db")
+        self.diario = Diario(cfg, self.registro, self.memoria, relogio)
+        self.ouvidos = None                      # ligados no começo do laço, se houver modelo treinado
+        self._motivo_ouvidos = "o serviço ainda não começou"
+
+        self._arquivo_de_estado = cfg.dados / "estado.json"
+        salvo = self._ler_estado()
+        self.seguranca.pausado = bool(salvo.get("pausado", False))
+        self.impulsos = Impulsos(cfg.mente, salvo.get("impulsos"))
+        self.termos_perguntados: set[str] = set(salvo.get("termos_perguntados", []))
+        self.novidades = int(salvo.get("novidades", 0))
+        self.pergunta_aberta: dict | None = None
+        self.ultima_pergunta: datetime | None = None
+        self.ultimo_relato: datetime | None = None
+
+        self.mapa = Mapa(cfg.dados / "mapa.db", relogio)
+        self.explorador = Explorador(cfg, self.seguranca, self.mapa, self.memoria, self.registro, relogio)
+        self.explorador.interromper = self._largar_a_exploracao
+        # os testes passam um ``transporte`` de mentira: nenhum teste sai para a internet de verdade
+        self.pesquisador = Pesquisador(cfg, self.seguranca, self.memoria, self.registro, relogio,
+                                       transporte=transporte, resolver=resolver,
+                                       assuntos_dos_arquivos=lambda: self.mapa.assuntos(8),
+                                       assuntos_das_conversas=self._assuntos_das_perguntas)
+        self._perguntas_lidas = (0.0, [])        # (quando, assuntos): o registro do dia não é relido a toda hora
+        self.pesquisador.navegador.interromper = self._largar_a_exploracao
+        self._vez_da_internet = False            # alterna: um fôlego no PC, um assunto na internet
+        self._contou_a_internet_em = self.iniciado_em.isoformat(timespec="seconds")
+        self._ultima_fonte = ""                  # o endereço da última resposta tirada da internet ("abre a fonte")
+        self._a_seu_pedido = ""                  # o que ele está pesquisando agora porque você pediu (a tela mostra)
+        self.atividade = "ocioso"                # ocioso | explorando | pausado (a interface mostra)
+        self.detalhe = ""
+        self._folego = 0                         # voltas que faltam no fôlego de exploração atual
+        self._largar = False                     # você falou no meio de uma pasta grande: é para largá-la
+        self._do_folego = {"pastas": 0, "arquivos": 0, "lidos": 0}
+
+        self.mensagens: list[dict] = []
+        self._trava_das_falas = threading.Lock()
+        self._proximo_id = 1
+        self.ultima_fala = relogio()
+        self._ultimo_pulso = 0.0
+        self._ja_explicou_cerebro = False
+        self._parar: asyncio.Event | None = None
+        self._laco_principal: asyncio.AbstractEventLoop | None = None
+        self._desligado = False
+        self.ao_desligar = None                  # o servidor web pendura aqui a sua parada
+
+        (cfg.dados / "DESLIGAR").unlink(missing_ok=True)  # um pedido antigo não vale para esta partida
+
+    # ================================================================ conversa
+    def dizer(self, texto: str, autor: str = "kernel", classe: str = "fala", **extra) -> dict:
+        with self._trava_das_falas:  # a conversa e o laço de autonomia falam de threads diferentes
+            mensagem = {"id": self._proximo_id, "ts": self._relogio().isoformat(timespec="seconds"),
+                        "autor": autor, "classe": classe, "texto": texto, **extra}
+            self._proximo_id += 1
+            self.mensagens.append(mensagem)
+            del self.mensagens[:-500]
+        self.registro.anotar("mensagem", autor=autor, classe=classe, texto=texto)
+        return mensagem
+
+    def _guardar(self, texto: str, tipo: str, origem: str = "usuario") -> int:
+        id_memoria = self.memoria.guardar(texto, tipo=tipo, origem=origem)
+        self.registro.anotar("memoria", classe=tipo, id=id_memoria)
+        return id_memoria
+
+    async def receber(self, texto: str) -> None:
+        """Você disse alguma coisa."""
+        texto = texto.strip()
+        if not texto:
+            return
+        agora = self._relogio()
+        self.ultima_fala = agora
+        self._folego = 0  # você falou: ele larga a exploração e presta atenção
+        self._largar = True
+        if self.atividade == "explorando":
+            self.atividade, self.detalhe = "ocioso", ""
+        self.dizer(texto, autor="voce")
+        try:
+            if not self._reflexo(texto, agora):
+                para_a_internet = reflexos.internet(texto)
+                if para_a_internet:
+                    await self._tratar_internet(*para_a_internet)
+                else:
+                    await self._entender(texto, agora)
+        except (ErroFerramenta, ErroSeguranca) as erro:
+            self.dizer(str(erro), classe="aviso")
+        except Exception as erro:  # noqa: BLE001
+            # Um defeito ao tratar a mensagem não pode virar erro 500: a página devolveria o texto ao campo,
+            # você mandaria de novo e a mesma fala ficaria duas vezes na conversa.
+            self.registro.anotar("erro", onde="receber", erro=f"{type(erro).__name__}: {erro}")
+            self.dizer("Tive um erro interno ao tratar isso. Anotei no registro.", classe="aviso")
+        self._salvar_estado()
+
+    def _reflexo(self, texto: str, agora: datetime) -> bool:
+        """Respostas por regra, antes do classificador. Devolve True se a mensagem foi resolvida aqui."""
+        comando = reflexos.controle(texto)
+        if comando == "pausar":
+            self.pausar()
+            return True
+        if comando == "retomar" and self.seguranca.pausado:
+            self.retomar()
+            return True
+        pedido = reflexos.estudo(texto)
+        if pedido:
+            self._tratar_estudo(*pedido)
+            return True
+        resposta = (reflexos.hora_ou_data(texto, agora) or calculo.tentar(texto)
+                    or reflexos.saudacao(texto, self.cfg.usuario, len(self.memoria.lembretes())))
+        if resposta:
+            self.registro.anotar("intencao", texto=texto, intencao="reflexo", confianca=1.0)
+            self.dizer(resposta)
+            return True
+        return False
+
+    async def _entender(self, texto: str, agora: datetime) -> None:
+        intencao, confianca = self.classificador.classificar(texto)
+        self.registro.anotar("intencao", texto=texto, intencao=intencao, confianca=round(confianca, 3))
+        if intencao == "abrir_programa":
+            self._propor("abrir_programa", {"programa": extrair.programa(texto)})
+        elif intencao == "listar_pasta":
+            self._propor("listar_pasta", {"pasta": extrair.pasta(texto)})
+        elif intencao == "anotar_lembrete":
+            corpo, quando = extrair.lembrete(texto, agora)
+            self._propor("anotar_lembrete", {"texto": corpo, "quando": quando.isoformat() if quando else None})
+        elif intencao == "consultar_memoria":
+            self._consultar(texto)
+        elif intencao == "sobre_si":
+            self.dizer(self.apresentacao())
+        elif intencao == "pergunta":
+            await self._responder_pergunta(texto)
+        elif intencao == "procurar_arquivo":
+            self._procurar_arquivo(texto)
+        elif intencao == "sistema":
+            self.dizer(sistema.descrever())
+        elif intencao == "descobertas":
+            self.dizer(self._relato())
+        else:
+            await self._conversar(texto)
+
+    def _propor(self, ferramenta: str, argumentos: dict, origem: str = "usuario") -> None:
+        pedido = self.maos.propor(ferramenta, argumentos, origem)
+        if pedido.estado == "pendente":
+            self.dizer(pedido.descricao + "?", classe="pedido", pedido=pedido.id)
+        else:
+            self._relatar(pedido)
+
+    def responder_pedido(self, id_pedido: str, aprovar: bool) -> None:
+        """Você clicou em Permitir ou Negar."""
+        try:
+            pedido = self.maos.concluir(id_pedido, aprovar)
+        except ErroSeguranca as erro:
+            self.dizer(str(erro), classe="aviso")
+            return
+        if pedido.estado == "negado":
+            self.dizer("Tudo bem, não fiz.")
+        else:
+            self._relatar(pedido)
+
+    def _relatar(self, pedido) -> None:
+        """Conta no chat no que deu uma ação das mãos."""
+        self.dizer(pedido.resultado, classe="resultado" if pedido.estado == "executado" else "aviso")
+        if pedido.ferramenta == "anotar_lembrete" and pedido.estado == "executado":
+            self.registro.anotar("memoria", classe="lembrete")
+
+    def _tratar_estudo(self, tipo: str, argumentos: dict) -> None:
+        if tipo == "parar":
+            self.dizer("Certo, vou parar assim que salvar o ponto em que estou." if self.estudo.parar()
+                       else "Não estou estudando nem treinando agora.")
+        elif tipo == "andamento":
+            self.dizer(f"Estou ocupado em {self.estudo.trabalho}: {self.estudo.situacao}." if self.estudo.ocupado
+                       else "Não estou estudando nem treinando agora.")
+        elif tipo == "wikipedia":
+            self._propor("estudar_wikipedia", argumentos)
+        else:
+            self._propor("treinar_cerebro", argumentos)
+
+    def _consultar(self, texto: str) -> None:
+        plano = normalizar(texto)
+        if re.search(r"lembrete|compromisso|(pra|para) fazer", plano):
+            pendentes = self.memoria.lembretes()
+            if not pendentes:
+                self.dizer("Você não tem lembretes pendentes.")
+                return
+            linhas = []
+            for lembrete in pendentes:
+                data = f" ({datetime.fromisoformat(lembrete.quando):%d/%m às %H:%M})" if lembrete.quando else ""
+                linhas.append(f"• {lembrete.texto}{data}")
+            self.dizer("Seus lembretes pendentes:\n" + "\n".join(linhas))
+            return
+        assunto = " ".join(t for t in termos(texto) if t not in _ANDAIME)
+        achados = self.memoria.buscar(assunto, k=5) if assunto else []
+        if not achados:
+            self.dizer("Não achei nada sobre isso na minha memória.")
+            return
+        self.dizer("Achei isto na memória:\n" + "\n".join(self._citar(a) for a in achados), classe="lembranca")
+
+    @staticmethod
+    def _citar(lembranca) -> str:
+        data = f"{datetime.fromisoformat(lembranca.criado_em):%d/%m/%Y}"
+        if lembranca.tipo == "leitura":
+            trecho = lembranca.texto if len(lembranca.texto) <= 220 else lembranca.texto[:220] + "…"
+            return f"• {trecho}  (li em {Path(lembranca.origem).parent.name}, {data})"
+        if lembranca.tipo == "pesquisa":
+            trecho = lembranca.texto if len(lembranca.texto) <= 220 else lembranca.texto[:220] + "…"
+            return f"• {trecho}  (da internet: {_site(lembranca.origem)}, {data})"
+        return f"• {lembranca.texto}  ({data}, {lembranca.tipo})"
+
+    async def _responder_pergunta(self, texto: str) -> None:
+        achado = self.enciclopedia.responder(texto)
+        if achado:
+            titulo, resposta = achado
+            self.dizer(resposta, classe="conhecimento", fonte=f"Wikipédia: {titulo}")
+            return
+        assunto = assunto_da_pergunta(texto)
+        if assunto and not self._sem_internet():
+            # O que você mesmo me ensinou vale mais do que a internet; depois, o que já pesquisei; por fim, pesquiso agora.
+            ensinado = [l for l in self.memoria.buscar(assunto, k=3, tipos=("fato", "lembrete")) if l.em_comum >= 1]
+            if ensinado:
+                self.dizer("Você me contou isto:\n" + "\n".join(self._citar(l) for l in ensinado), classe="lembranca")
+                return
+            precisa = min(2, len(set(termos(assunto))))
+            sabido = next((l for l in self.memoria.buscar(assunto, k=3, tipos=("pesquisa",)) if l.em_comum >= precisa), None)
+            if sabido:
+                self._ultima_fonte = sabido.origem
+                corpo = sabido.texto.split(": ", 1)[-1]
+                self.dizer(resumo(corpo, assunto), classe="pesquisa", fonte=f"já pesquisei: {_site(sabido.origem)}",
+                           link=sabido.origem)
+                return
+            await self._pesquisar_agora(_como_voce_escreveu(texto, assunto), origem="pergunta")
+            return
+        lembrancas = [l for l in (self.memoria.buscar(assunto, k=3) if assunto else []) if l.em_comum >= 1]
+        if lembrancas:
+            self.dizer("Não estudei isso, mas achei nas minhas memórias:\n"
+                       + "\n".join(self._citar(l) for l in lembrancas), classe="lembranca")
+        elif len(self.enciclopedia) == 0:
+            self.dizer('Ainda não sei responder perguntas assim. Se você disser "estuda a wikipédia", '
+                       "eu baixo, leio e passo a responder.")
+        else:
+            self.dizer("Não achei isso no que eu estudei.")
+
+    # ================================================================ internet
+    def _sem_internet(self) -> str:
+        """Por que ele não pode ir à internet agora (texto vazio = pode, a seu pedido)."""
+        if self.seguranca.modo_seguro:
+            return "Estou em modo seguro: não saio para a internet."
+        if not self.cfg.internet.ligada:
+            return ("A internet está desligada na minha configuração. Para ligar, ponha ligada = true "
+                    "em [internet] no kernel.toml e reinicie.")
+        return ""
+
+    async def _tratar_internet(self, tipo: str, alvo: str) -> None:
+        """Você pediu uma pesquisa, a leitura de uma página, a fonte no navegador, ou um relato."""
+        if tipo == "relato":
+            self.dizer(self._sem_internet() or self.pesquisador.relato())
+        elif tipo == "abrir":
+            url = self._ultima_fonte if alvo == "fonte" else alvo
+            if url:
+                self._propor("abrir_pagina", {"url": url})
+            else:
+                self.dizer("Ainda não tenho uma fonte para abrir. Peça uma pesquisa primeiro.")
+        elif self._sem_internet():
+            self.dizer(self._sem_internet(), classe="aviso")
+        elif tipo == "ler":
+            await self._pesquisar_agora(alvo, origem="pagina")
+        else:
+            await self._pesquisar_agora(alvo, origem="pedido")
+
+    async def _pesquisar_agora(self, alvo: str, origem: str) -> None:
+        """Pesquisa a seu pedido (fora do laço principal: a rede leva segundos) e conta o que achou."""
+        laco = asyncio.get_running_loop()
+        self._a_seu_pedido = alvo[:60]   # um campo à parte: o laço de autonomia reescreve ``atividade`` a cada volta
+        try:
+            if origem == "pagina":
+                resultado = await laco.run_in_executor(None, self.pesquisador.ler_pagina, alvo, False)
+            else:
+                resultado = await laco.run_in_executor(None, self.pesquisador.pesquisar, alvo, False, origem)
+        finally:
+            self._a_seu_pedido = ""
+        if not resultado.fontes:
+            motivo = resultado.avisos[0] if resultado.avisos else "nenhuma fonte tinha texto sobre isso"
+            self.dizer(f'Fui à internet atrás de "{alvo}" e voltei sem nada: {motivo}.', classe="aviso")
+            return
+        principal = resultado.fontes[0]
+        self._ultima_fonte = principal.url
+        sites = ", ".join(dict.fromkeys(f.site for f in resultado.fontes))
+        quantas = len(resultado.fontes)
+        rodape = (f"Li {quantas} {'página' if quantas == 1 else 'páginas'} ({sites}) e guardei "
+                  f"{resultado.trechos} {'trecho' if resultado.trechos == 1 else 'trechos'} na memória.")
+        fonte = f"{principal.fonte}: {principal.titulo}" if principal.fonte != "web" else principal.site
+        self.dizer(f"{resultado.resposta}\n\n{rodape}", classe="pesquisa", fonte=fonte, link=principal.url)
+
+    def _assuntos_das_perguntas(self) -> list[str]:
+        """Os assuntos das suas perguntas de hoje e de ontem (os mais recentes primeiro).
+
+        É por eles que a pesquisa por conta própria começa: ele estuda aquilo sobre o que você quis saber.
+        """
+        agora = self._relogio()
+        if agora.timestamp() - self._perguntas_lidas[0] < 600:
+            return self._perguntas_lidas[1]
+        assuntos = []
+        for dia in (agora.date() - timedelta(days=1), agora.date()):
+            for entrada in self.registro.do_dia(dia):
+                if entrada.get("tipo") == "intencao" and entrada.get("intencao") == "pergunta":
+                    texto = str(entrada.get("texto", ""))
+                    assunto = assunto_da_pergunta(texto)
+                    if assunto:
+                        assuntos.append(_como_voce_escreveu(texto, assunto))
+        recentes = list(dict.fromkeys(reversed(assuntos)))[:10]
+        self._perguntas_lidas = (agora.timestamp(), recentes)
+        return recentes
+
+    def _pesquisar_sozinho(self) -> tuple[str, str] | None:
+        """A vez da internet no laço de autonomia: pesquisa um assunto da fila. None se não há o que fazer."""
+        if not self.pesquisador.pode_sozinho():
+            return None
+        self._largar = False
+        assunto = self.pesquisador.proximo_assunto()
+        if assunto:
+            self.atividade, self.detalhe = "pesquisando", assunto[:60]
+        try:
+            feito = self.pesquisador.passo()
+        finally:
+            self.atividade, self.detalhe = "ocioso", ""
+        if feito is None or feito["acao"] == "interrompido":
+            return None
+        self.impulsos.satisfazer("curiosidade", _CUSTO_DE_PESQUISAR)
+        if not feito["trechos"]:
+            return "pesquisar", f'Pesquisei "{feito["termo"]}" na internet e não achei texto que servisse.'
+        self.novidades += 2
+        return "pesquisar", (f'Pesquisei "{feito["termo"]}" na internet: li {feito["paginas"]} '
+                             f'{"página" if feito["paginas"] == 1 else "páginas"} '
+                             f'({", ".join(dict.fromkeys(feito["sites"]))}) e guardei {feito["trechos"]} trechos.')
+
+    def _procurar_arquivo(self, texto: str) -> None:
+        palavras = [_TIPOS_DE_ARQUIVO.get(p, p) for p in normalizar(texto).replace("?", " ").split()]
+        alvo = " ".join(p for p in palavras if radical(p) not in _ANDAIME_DE_ARQUIVO and p not in PARADAS)
+        achados = self.mapa.procurar(alvo) if alvo else []
+        if achados:
+            linhas = [f"• {a['nome']}  —  {Path(a['caminho']).parent}  "
+                      f"({datetime.fromtimestamp(a['modificado']):%d/%m/%Y})" for a in achados]
+            self.dizer("Achei estes arquivos:\n" + "\n".join(linhas), classe="resultado")
+            return
+        por_conteudo = [l for l in self.memoria.buscar(alvo, k=3, tipos=("leitura",)) if l.em_comum >= 1] if alvo else []
+        if por_conteudo:
+            self.dizer("Nenhum arquivo com esse nome, mas estes falam disso:\n"
+                       + "\n".join(f"• {l.origem}" for l in por_conteudo), classe="resultado")
+        else:
+            n = self.mapa.numeros()
+            self.dizer(f"Não vi nenhum arquivo assim. Até agora explorei {n['pastas_visitadas']} pastas "
+                       f"e vi {n['arquivos']} arquivos.")
+
+    async def _conversar(self, texto: str) -> None:
+        if self.pergunta_aberta:  # você está respondendo a uma pergunta que ele fez
+            termo = self.pergunta_aberta["termo"]
+            self.pergunta_aberta = None
+            if normalizar(texto).strip(" .!") in _DESISTENCIAS:
+                self.dizer("Tudo bem, deixa pra lá.")
+                return
+            self._guardar(f"Sobre {termo}: {texto}", tipo="fato")
+            self.dizer(f'Obrigado. Guardei isso sobre "{termo}".')
+            return
+
+        lembrancas = [l for l in self.memoria.buscar(texto, k=2, tipos=("fato", "conversa", "lembrete"))
+                      if l.em_comum >= self.cfg.mente.termos_para_lembrar]
+        id_memoria = self._guardar(texto, tipo="conversa")
+        if lembrancas:
+            self.dizer("Isso me lembra:\n" + "\n".join(self._citar(l) for l in lembrancas), classe="lembranca")
+
+        if self.cerebro:
+            c = self.cfg.cerebro
+            laco = asyncio.get_running_loop()
+            resposta = await laco.run_in_executor(
+                None, lambda: self.cerebro.responder(texto, c.max_tokens, c.temperatura, c.top_k))
+            self.dizer(resposta or "...", classe="cerebro")
+        elif not self._ja_explicou_cerebro:
+            self._ja_explicou_cerebro = True
+            self.dizer("Guardei na memória. Ainda não converso de verdade: meu cérebro não foi treinado. "
+                       "Mas respondo perguntas do que estudei, faço contas, acho arquivos, abro programas "
+                       "e anoto lembretes.")
+        elif not lembrancas:
+            self.dizer(_CONFIRMACOES[id_memoria % len(_CONFIRMACOES)])
+
+    def apresentacao(self) -> str:
+        """Quem ele é e como está agora (o começo do "modelo de si mesmo")."""
+        estado = self.estado()
+        total = estado["memoria"].get("total", 0)
+        impulsos = ", ".join(f"{nome.replace('organizacao', 'organização')} {valor:.2f}"
+                             for nome, valor in estado["impulsos"].items())
+        exploracao = estado["exploracao"]
+        if self.seguranca.pausado:
+            autonomia = 'parada a seu pedido (diga "pode continuar")'
+        elif exploracao["ligada"]:
+            autonomia = (f"exploro sozinho {len(exploracao['pastas'])} pastas liberadas "
+                         f"(já vi {exploracao['numeros']['arquivos']} arquivos)")
+        else:
+            autonomia = "exploração desligada na configuração"
+        linhas = [
+            f"Eu sou o {NOME} ({NOME_COMPLETO}), versão {VERSAO}: o seu Jarvis feito do zero.",
+            "",
+            "O que sei fazer:",
+            '• explorar as pastas liberadas e achar arquivos ("onde está o contrato?")',
+            '• responder do que estudei ("o que é astronomia?") e fazer contas ("15% de 200")',
+            *(['• pesquisar na internet ("pesquisa sobre buracos negros"), sozinho ou a seu pedido, sempre citando a fonte']
+              if self.cfg.internet.ligada else []),
+            '• abrir programas, listar pastas e anotar lembretes, sempre com a sua confirmação',
+            '• lembrar do que você me conta ("o que você lembra sobre o cliente?")',
+            '• obedecer ao freio: diga "para" e eu paro; "pode continuar" e eu volto',
+            "",
+            f"Autonomia: {autonomia}.",
+            f"Cérebro: {estado['cerebro']['descricao']}.",
+            f"Conhecimento: {estado['conhecimento']} artigos estudados.",
+            f"Internet: {self._situacao_da_internet()}.",
+            f"Memória: {total} {'lembrança' if total == 1 else 'lembranças'}.",
+            f"Ouvidos: {estado['ouvidos']['descricao']}.",
+            f"Impulsos: {impulsos}.",
+        ]
+        if self.seguranca.modo_seguro:
+            linhas.append(f"ATENÇÃO: estou em modo seguro ({self.seguranca.motivo_modo_seguro}).")
+        return "\n".join(linhas)
+
+    # ================================================================== o freio
+    def pausar(self) -> None:
+        """Você mandou parar: nada de exploração nem de iniciativa até mandar continuar."""
+        self.seguranca.pausado = True
+        self._folego = 0
+        self.atividade, self.detalhe = "pausado", ""
+        self.registro.anotar("autonomia", evento="pausada")
+        self.dizer('Parei. Não exploro nem tomo iniciativa até você dizer "pode continuar". '
+                   "Lembretes eu continuo avisando.")
+        self._salvar_estado()
+
+    def retomar(self) -> None:
+        self.seguranca.pausado = False
+        self.atividade = "ocioso"
+        self.registro.anotar("autonomia", evento="retomada")
+        self.dizer("Certo, volto a explorar quando você não estiver falando comigo.")
+        self._salvar_estado()
+
+    # ====================================================== laço de autonomia
+    async def laco(self) -> None:
+        self._parar = asyncio.Event()
+        self._laco_principal = asyncio.get_running_loop()
+        self.registro.anotar("servico", evento="inicio", versao=VERSAO)
+        self._ligar_ouvidos()
+        intervalo = self.cfg.nucleo.intervalo_laco
+        while not self._parar.is_set():
+            try:
+                # Em outra thread: ler um PDF grande leva segundos, e a conversa não pode travar por isso.
+                await self._laco_principal.run_in_executor(None, self.volta, intervalo)
+            except Exception as erro:  # um erro numa volta não pode matar o laço
+                self.registro.anotar("erro", onde="laco", erro=repr(erro))
+            try:
+                await asyncio.wait_for(self._parar.wait(), timeout=intervalo)
+            except asyncio.TimeoutError:
+                pass
+        self._salvar_estado()
+        self.registro.anotar("servico", evento="fim")
+
+    def volta(self, segundos: float) -> str:
+        """Uma volta do laço. Devolve a decisão tomada ("nada" é uma decisão válida)."""
+        agora = self._relogio()
+        if (self.cfg.dados / "DESLIGAR").exists():  # o freio funciona mesmo sem a janela de chat
+            self.desligar("arquivo DESLIGAR")
+            return "desligar"
+
+        # 1. Perceber
+        percepcao = Percepcao(
+            agora=agora,
+            segundos_ocioso=(agora - self.ultima_fala).total_seconds(),
+            memorias_por_organizar=self.memoria.por_organizar(),
+            novidades=self.novidades,
+        )
+        for pedido in self.seguranca.expirar():
+            self.dizer(f"O pedido expirou sem resposta: {pedido.descricao}.", classe="aviso")
+
+        # Obrigações: não dependem de impulso nem de autonomia.
+        for lembrete in self.memoria.lembretes_vencidos(agora):
+            self.memoria.marcar_feito(lembrete.id)
+            self.dizer(f"Lembrete: {lembrete.texto}", classe="iniciativa")
+        for dia in self.diario.pendentes(agora):
+            self.diario.escrever(dia)
+            if dia == agora.date():
+                self.dizer("Escrevi no diário sobre o dia de hoje.", classe="iniciativa")
+
+        if self.seguranca.pausado:
+            self.atividade = "pausado"
+            return "pausado"
+        if not self.cfg.nucleo.autonomia or self.seguranca.modo_seguro:
+            self.atividade = "ocioso"
+            return "sem autonomia"
+
+        # 2 e 3. Lembrar e avaliar: os impulsos sobem ou descem com o que foi percebido.
+        self.impulsos.atualizar(percepcao, segundos)
+        if agora.timestamp() - self._ultimo_pulso >= _SEGUNDOS_ENTRE_PULSOS:
+            self._ultimo_pulso = agora.timestamp()
+            self.registro.anotar("pulso", impulsos={n: round(v, 3) for n, v in self.impulsos.valores.items()})
+            self._salvar_estado()
+
+        if self._folego > 0:  # no meio de um fôlego de exploração: continua
+            return self._explorar(agora)
+
+        # 4 e 5. Decidir e agir: do impulso mais forte para o mais fraco, o primeiro que tiver o que fazer.
+        self.atividade, self.detalhe = "ocioso", ""
+        for impulso in self.impulsos.acima_do_limiar():
+            valor = self.impulsos.valores[impulso]
+            if impulso == "organizacao":
+                resultado = self.memoria.organizar()
+                self.impulsos.satisfazer("organizacao")
+                decisao = "organizar"
+                reflexao = (f"Arrumei {resultado['arrumadas']} memórias e apaguei "
+                            f"{resultado['repetidas_apagadas']} repetidas.")
+            elif impulso == "social":
+                decisao, reflexao = self._contar_novidades(agora)
+            else:
+                decisao, reflexao = self._agir_por_curiosidade(agora, percepcao.segundos_ocioso)
+            if decisao == "explorar":
+                return decisao  # o fôlego anota a própria reflexão quando termina
+            if decisao != "nada":
+                # 6. Refletir: o que fiz, por quê, e no que deu.
+                self.registro.anotar("laco", impulso=impulso, valor=round(valor, 3), decisao=decisao,
+                                     reflexao=reflexao)
+                self._salvar_estado()
+                return decisao
+        return "nada"
+
+    # ------------------------------------------------------------- curiosidade
+    def _agir_por_curiosidade(self, agora: datetime, segundos_ocioso: float) -> tuple[str, str]:
+        if segundos_ocioso >= _SOSSEGO_PARA_EXPLORAR:
+            # Alterna: um fôlego de exploração do PC, um assunto pesquisado na internet.
+            self._vez_da_internet = not self._vez_da_internet
+            if self._vez_da_internet or not self.cfg.exploracao.ligada:
+                feito = self._pesquisar_sozinho()
+                if feito:
+                    return feito
+        if self.cfg.exploracao.ligada and segundos_ocioso >= _SOSSEGO_PARA_EXPLORAR:
+            self._folego = _VOLTAS_POR_FOLEGO
+            self._do_folego = {"pastas": 0, "arquivos": 0, "lidos": 0}
+            if self._explorar(agora) == "explorar":
+                return "explorar", ""
+        return self._perguntar(agora)
+
+    def _largar_a_exploracao(self) -> bool:
+        """O explorador pergunta isto no meio de uma pasta grande: é para largar o que está fazendo?
+
+        Sim se você falou, se o serviço está desligando ou se pediram para desligar. (O "para" ele mesmo vê.)
+        """
+        return self._largar or self._desligado or (self.cfg.dados / "DESLIGAR").exists()
+
+    def _explorar(self, agora: datetime) -> str:
+        """Uma volta de um fôlego de exploração: alguns passos do explorador."""
+        passos, custo = _RITMOS.get(self.cfg.exploracao.ritmo, _RITMOS["normal"])
+        fez_algo = False
+        self._largar = False
+        for _ in range(passos):
+            feito = self.explorador.passo()
+            if feito is None:
+                break
+            if feito["acao"] == "interrompido":  # largou a pasta no meio: o fôlego acaba aqui
+                self._folego = 0
+                break
+            fez_algo = True
+            if feito["acao"] == "visitar":
+                self._do_folego["pastas"] += 1
+                self._do_folego["arquivos"] += feito["arquivos_novos"]
+                self.novidades += 1 if feito["arquivos_novos"] or feito["pastas_novas"] else 0
+                self.detalhe = Path(feito["pasta"]).name
+            elif feito["acao"] == "ler":
+                self._do_folego["lidos"] += 1
+                self.novidades += 2
+                self.detalhe = Path(feito["arquivo"]).name
+        self._folego = max(self._folego - 1, 0) if fez_algo else 0
+        if fez_algo:
+            self.atividade = "explorando"
+        if self._folego > 0:
+            return "explorar"
+        # o fôlego acabou (ou não havia mais nada para ver)
+        self.atividade, self.detalhe = "ocioso", ""
+        self.impulsos.satisfazer("curiosidade", custo)
+        f = self._do_folego
+        if not (fez_algo or f["pastas"] or f["lidos"]):
+            return "nada"
+        reflexao = f"Neste fôlego visitei {f['pastas']} pastas, vi {f['arquivos']} arquivos novos e li {f['lidos']}."
+        self.registro.anotar("laco", impulso="curiosidade", decisao="explorar", reflexao=reflexao)
+        self._perguntar(agora)  # se achou um nome que não conhece, aproveita e pergunta
+        self._salvar_estado()
+        return "explorar"
+
+    def _perguntar(self, agora: datetime) -> tuple[str, str]:
+        if self.pergunta_aberta:
+            if agora - self.pergunta_aberta["desde"] < timedelta(minutes=_MINUTOS_DE_ESPERA_DA_PERGUNTA):
+                return "nada", ""  # ainda esperando a sua resposta
+            self.pergunta_aberta = None
+        espera = timedelta(minutes=self.cfg.mente.minutos_entre_perguntas)
+        if self.ultima_pergunta and agora - self.ultima_pergunta < espera:
+            return "nada", ""
+        candidato = self._termo_curioso(agora)
+        if candidato:
+            termo, palavra, frase = candidato
+            pergunta = f'Fiquei curioso: você falou em "{palavra}" ("{frase}"). O que é? Me conta que eu guardo na memória.'
+            reflexao = f'Perguntei sobre "{palavra}", que só aparece uma vez na minha memória.'
+        else:
+            visto = self.mapa.nome_curioso(self.termos_perguntados)
+            if visto is None:
+                if self._folego == 0 and not self.cfg.exploracao.ligada:
+                    self.impulsos.satisfazer("curiosidade", 0.3)
+                    return "procurar_novidade", "Procurei algo novo no que foi dito hoje e não achei."
+                return "nada", ""
+            termo, palavra, quantos, exemplo = visto
+            pergunta = (f'Explorando, vi "{palavra}" em {quantos} arquivos (por exemplo em {exemplo}). '
+                        "Quem ou o que é? Me conta que eu guardo na memória.")
+            reflexao = f'Perguntei sobre "{palavra}", que aparece em {quantos} arquivos.'
+        self.termos_perguntados.add(termo)
+        self.pergunta_aberta = {"termo": palavra, "desde": agora}
+        self.ultima_pergunta = agora
+        if self._folego == 0 and not self.cfg.exploracao.ligada:
+            self.impulsos.satisfazer("curiosidade")
+        self.dizer(pergunta, classe="iniciativa")
+        return "perguntar", reflexao
+
+    def _termo_curioso(self, agora: datetime) -> tuple[str, str, str] | None:
+        """Um nome próprio ou sigla que você citou no último dia e que ele só viu uma vez."""
+        desde = (agora - timedelta(days=1)).isoformat(timespec="seconds")
+        for lembranca in self.memoria.recentes(30, tipo="conversa", desde=desde):
+            for achado in re.finditer(r"[^\W\d_]{2,}", lembranca.texto):
+                palavra = achado.group(0)
+                antes = lembranca.texto[:achado.start()].rstrip()
+                inicio_de_frase = not antes or antes[-1] in ".!?:"
+                nome_proprio = palavra[0].isupper() and not inicio_de_frase and len(palavra) > 2
+                if not (nome_proprio or palavra.isupper()):
+                    continue
+                termo = radical(normalizar(palavra))
+                if termo in PARADAS or termo in self.termos_perguntados:
+                    continue
+                if self.memoria.frequencia(termo) == 1:
+                    return termo, palavra, lembranca.texto
+        return None
+
+    # ------------------------------------------------------------------ social
+    def _relato(self) -> str:
+        if not self.cfg.exploracao.ligada:
+            return "A exploração está desligada na configuração (kernel.toml, seção [exploracao])."
+        prefixo = "Estou parado a seu pedido. " if self.seguranca.pausado else ""
+        return prefixo + self.explorador.relato()
+
+    def _contar_novidades(self, agora: datetime) -> tuple[str, str]:
+        espera = timedelta(minutes=self.cfg.mente.minutos_entre_relatos)
+        if self.ultimo_relato and agora - self.ultimo_relato < espera:
+            return "nada", ""
+        self.ultimo_relato = agora
+        self.novidades = 0
+        self.impulsos.satisfazer("social")
+        relato = "Andei explorando. " + self.explorador.relato()
+        pesquisados = self.pesquisador.feitos_desde(self._contou_a_internet_em)
+        if pesquisados:
+            relato += " Na internet, pesquisei sobre " + ", ".join(pesquisados) + "."
+        self._contou_a_internet_em = agora.isoformat(timespec="seconds")
+        self.dizer(relato, classe="iniciativa")
+        return "contar", "Contei o que descobri explorando."
+
+    # ================================================================== estudo
+    def _estudo_terminou(self, trabalho: str, mensagem: str) -> None:
+        """Chamado pela thread do estudo; a notícia volta para o laço principal."""
+        def avisar():
+            if trabalho.startswith("treinar"):
+                self.cerebro = inferencia.carregar(self.cfg)
+            self.dizer(mensagem, classe="iniciativa")
+
+        if self._laco_principal and self._laco_principal.is_running():
+            self._laco_principal.call_soon_threadsafe(avisar)
+        else:
+            avisar()
+
+    # ================================================================== ouvidos
+    def _ligar_ouvidos(self) -> None:
+        from ..ouvidos import escutar
+
+        laco = asyncio.get_running_loop()
+        # o microfone roda em outra thread; a notícia volta para o laço principal por aqui
+        self.ouvidos, self._motivo_ouvidos = escutar.iniciar(
+            self.cfg, lambda certeza: laco.call_soon_threadsafe(self.ativado, certeza))
+        self.registro.anotar("ouvidos", ligados=self.ouvidos is not None, motivo=self._motivo_ouvidos)
+
+    def ativado(self, certeza: float) -> None:
+        """Os ouvidos reconheceram a palavra de ativação."""
+        self.ultima_fala = self._relogio()
+        self.registro.anotar("ativacao", certeza=round(certeza, 3))
+        self.dizer("Estou ouvindo. (Por enquanto, me diga pelo teclado.)", classe="iniciativa")
+
+    def _situacao_da_internet(self) -> str:
+        if not self.cfg.internet.ligada:
+            return "desligada na configuração"
+        n = self.pesquisador.numeros()
+        modo = "pesquiso sozinho e a seu pedido" if self.cfg.internet.pesquisar_sozinho else "só pesquiso a seu pedido"
+        return f"ligada ({modo}); {n['pesquisados']} assuntos pesquisados, {n['na_fila']} na fila"
+
+    # =================================================================== estado
+    def estado(self) -> dict:
+        if self.cerebro:
+            cerebro = {"treinado": True, "descricao": self.cerebro.descricao}
+        else:
+            cerebro = {"treinado": False, "descricao": "ainda não treinado"}
+        if self.ouvidos:
+            ouvidos = {"ativo": True, "descricao": f'escutando a palavra "{self.cfg.ouvidos.palavra}"'}
+        else:
+            ouvidos = {"ativo": False, "descricao": f"desligados ({self._motivo_ouvidos})"}
+        if self.estudo.ocupado:
+            atividade, detalhe = "estudando", f"{self.estudo.trabalho}: {self.estudo.situacao}"
+        elif self._a_seu_pedido:
+            atividade, detalhe = "pesquisando", self._a_seu_pedido
+        else:
+            atividade, detalhe = self.atividade, self.detalhe
+        return {
+            "nome": NOME,
+            "nome_completo": NOME_COMPLETO,
+            "versao": VERSAO,
+            "usuario": self.cfg.usuario,
+            "desde": self.iniciado_em.isoformat(timespec="seconds"),
+            "sessao": self.sessao,
+            "modo_seguro": self.seguranca.modo_seguro,
+            "motivo_modo_seguro": self.seguranca.motivo_modo_seguro,
+            "autonomia": self.cfg.nucleo.autonomia and not self.seguranca.modo_seguro,
+            "pausado": self.seguranca.pausado,
+            "atividade": atividade,
+            "detalhe": detalhe,
+            "impulsos": {nome: round(valor, 3) for nome, valor in self.impulsos.valores.items()},
+            "limiar_impulso": self.cfg.mente.limiar_impulso,
+            "memoria": self.memoria.contar(),
+            "cerebro": cerebro,
+            "conhecimento": len(self.enciclopedia),
+            "ouvidos": ouvidos,
+            "exploracao": {
+                "ligada": self.cfg.exploracao.ligada,
+                "ler_arquivos": self.cfg.exploracao.ler_arquivos,
+                "ritmo": self.cfg.exploracao.ritmo,
+                "pastas": [str(p) for p in self.cfg.pastas_permitidas()],
+                "numeros": self.mapa.numeros(),
+            },
+            "internet": {"ligada": self.cfg.internet.ligada, "sozinho": self.cfg.internet.pesquisar_sozinho,
+                         "buscador": self.cfg.internet.buscador, **self.pesquisador.numeros()},
+            "voz": {"ligada": self.cfg.voz.ligada, "motor": self.cfg.voz.motor},
+            "celular": {"ligado": self.cfg.celular.ligado, "aparelhos": len(self.aparelhos.lista())},
+            "ferramentas": [{"nome": f.nome, "descricao": f.descricao, "nivel": int(f.nivel)}
+                            for f in self.maos.ferramentas.values()],
+            "pedidos": {m["pedido"]: self.seguranca.pedido(m["pedido"]).estado
+                        for m in self.mensagens[-100:] if m.get("pedido")},
+            "pergunta_aberta": self.pergunta_aberta["termo"] if self.pergunta_aberta else None,
+            "ultimo_id": self._proximo_id - 1,
+        }
+
+    def _ler_estado(self) -> dict:
+        try:
+            return json.loads(self._arquivo_de_estado.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+
+    def _salvar_estado(self) -> None:
+        dados = {"impulsos": self.impulsos.valores, "termos_perguntados": sorted(self.termos_perguntados),
+                 "pausado": self.seguranca.pausado, "novidades": self.novidades}
+        temporario = self._arquivo_de_estado.with_suffix(".tmp")
+        temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporario.replace(self._arquivo_de_estado)
+
+    # ================================================================== desligar
+    def desligar(self, motivo: str = "botão de desligar") -> None:
+        """O freio de mão: para o laço, os ouvidos, o estudo e o servidor."""
+        if self._desligado:
+            return
+        self._desligado = True
+        (self.cfg.dados / "DESLIGAR").unlink(missing_ok=True)
+        self.registro.anotar("servico", evento="desligar", motivo=motivo)
+        self._salvar_estado()
+        self.estudo.parar()
+        if self.ouvidos:
+            self.ouvidos.parar()
+            self.ouvidos = None
+        if self._parar:
+            self._parar.set()
+        if self.ao_desligar:
+            self.ao_desligar()
+
+    def fechar(self) -> None:
+        """Fecha os arquivos de banco (os testes usam para poder apagar a pasta temporária)."""
+        for banco in (self.memoria, self.mapa, self.enciclopedia, self.pesquisador):
+            banco.fechar()

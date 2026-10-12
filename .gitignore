@@ -1,0 +1,20 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Tudo o que o K.E.R.N.E.L aprende e guarda fica no HD, não no Git:
+# memória, registro, diário, gravações de voz, corpus e pesos do cérebro.
+dados/
+
+# A sua configuração (pastas liberadas, internet, celular) é pessoal: o repositório
+# traz o modelo kernel.exemplo.toml, e o instalar.ps1 copia para kernel.toml.
+kernel.toml
+
+# Saída padrão de "python -m kernel falar"
+/falar.wav
+
+# Editor
+.vscode/
+.idea/
