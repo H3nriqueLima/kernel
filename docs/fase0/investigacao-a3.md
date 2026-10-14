@@ -35,10 +35,10 @@ Montada a partir do registro do K.E.R.N.E.L, do `treino.csv`, dos logs do Window
 **3. Foi a atualização do app do Claude.** O serviço era filho do app do Claude: tinha sido iniciado por ele às 23:20. O fechamento coincide, no mesmo segundo, com a atualização do app.
 
 Conferido em 14/10, com `IsProcessInJob` do Windows:
-- o shell que o Claude Code usa para rodar comandos está dentro de um *job* do app, um grupo de processos que o Windows fecha junto;
-- o serviço ligado pelo `iniciar.bat` não está, e o Explorer também não.
+- o shell que o Claude Code usa para rodar comandos está dentro de um *job*, um grupo de processos que o Windows fecha junto;
+- o `pythonw` do serviço ligado pelo `iniciar.bat` não está em job nenhum, e o Explorer também não. O interpretador que esse `pythonw` da `.venv` abre fica num job criado pelo próprio `pythonw`, que só o fecha junto com ele.
 
-Um serviço lançado por aquele shell nasce dentro do job, e por isso morreu com a atualização.
+Um processo nascido daquele shell herda o job dele, e por isso o serviço morreu com a atualização. A 0.5.1 foi religada pelo Explorer (o mesmo caminho do duplo clique), e o `pythonw` dela ficou fora de qualquer job.
 
 Quando o Windows fecha um app para atualizá-lo, fecha junto os processos que nasceram dele:
 - os programas de console, como o treino, recebem um sinal de interrupção;
