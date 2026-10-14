@@ -6,8 +6,12 @@ validação, escreve uma amostra, salva o checkpoint e, se melhorou, exporta os
 pesos para o serviço usar.
 
 O treino pode ser interrompido (Ctrl+C) e retomado: o checkpoint guarda o
-modelo, o otimizador e o passo. ``--horas`` limita uma sessão; ``--passos`` é
-a meta total, que pode levar várias madrugadas.
+modelo, o otimizador e o passo. Há dois jeitos de dizer quanto treinar:
+
+- ``--horas 6``: uma sessão de seis horas, que continua de onde a anterior
+  parou. A taxa de aprendizado sobe no começo da sessão e desce em cosseno até
+  o fim dela. Dá para repetir quantas madrugadas quiser;
+- ``--passos 20000``: uma meta total de passos (o jeito antigo).
 
     python -m kernel cerebro treinar --horas 6
 """
@@ -34,8 +38,9 @@ CHECKPOINT = "checkpoint.pt"
 @dataclass
 class ConfigTreino:
     tamanho: str = "mini"
-    passos: int = 20_000           # meta total de passos
+    passos: int | None = None      # meta total de passos (None com ``horas``: a sessão vai até o tempo acabar)
     horas: float | None = None     # limite desta sessão
+    taxa_ao_continuar: float = 0.5  # numa sessão que continua um treino, o pico da taxa é esta fração de ``taxa``
     lote: int = 16                 # ver LOTES em gpt.py: o que cabe na RX 570
     acumular: int = 2              # soma o gradiente de N lotes antes do passo (efeito de lote maior)
     taxa: float = 6e-4
@@ -48,12 +53,29 @@ class ConfigTreino:
     semente: int = 1337
 
 
+PASSOS_SEM_META = 20_000   # sem ``--passos`` e sem ``--horas``, a meta é esta
+
+
 def taxa_no_passo(cfg: ConfigTreino, passo: int) -> float:
     """Sobe em linha reta no aquecimento, depois desce em cosseno até 10% da taxa."""
     if passo < cfg.aquecimento:
         return cfg.taxa * (passo + 1) / cfg.aquecimento
-    progresso = min(1.0, (passo - cfg.aquecimento) / max(1, cfg.passos - cfg.aquecimento))
+    meta = cfg.passos or PASSOS_SEM_META
+    progresso = min(1.0, (passo - cfg.aquecimento) / max(1, meta - cfg.aquecimento))
     return cfg.taxa * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * progresso)))
+
+
+def taxa_na_sessao(cfg: ConfigTreino, passos_na_sessao: int, fracao_do_tempo: float, continuando: bool) -> float:
+    """A taxa numa sessão medida em horas: aquece nos primeiros passos e desce em cosseno com o relógio.
+
+    Numa sessão que continua um treino anterior o pico é menor (``taxa_ao_continuar``): o cérebro já
+    aprendeu o grosso, e um passo grande demais desarrumaria o que ele sabe.
+    """
+    pico = cfg.taxa * (cfg.taxa_ao_continuar if continuando else 1.0)
+    if passos_na_sessao < cfg.aquecimento:
+        return pico * (passos_na_sessao + 1) / cfg.aquecimento
+    progresso = min(1.0, max(0.0, fracao_do_tempo))
+    return pico * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * progresso)))
 
 
 @torch.no_grad()
@@ -114,10 +136,13 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
     avisar(f"dispositivo: {descricao}")
     avisar(f"modelo: {modelo.numero_de_parametros() / 1e6:.2f} mi de parâmetros | "
            f"treino: {len(treino) / 1e6:.1f} mi de tokens | val: {len(val) / 1e6:.2f} mi")
+    por_horas = cfg.passos is None and bool(cfg.horas)       # uma sessão que só acaba quando o tempo acaba
+    meta = None if por_horas else (cfg.passos or PASSOS_SEM_META)
+    passo_inicial = passo
     if passo:
         avisar(f"continuando do passo {passo} (melhor perda de validação até aqui: {melhor:.3f})")
-    if passo >= cfg.passos:
-        avisar(f"a meta de {cfg.passos} passos já foi atingida; aumente --passos para continuar.")
+    if meta is not None and passo >= meta:
+        avisar(f"a meta de {meta} passos já foi atingida; use --horas para treinar mais uma sessão.")
 
     try:
         from torch.utils.tensorboard import SummaryWriter
@@ -142,7 +167,7 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
             inferencia.exportar(modelo, pasta / inferencia.MODELO)
         with open(diario_de_treino, "a", newline="") as f:
             csv.writer(f).writerow([passo, f"{perda_treino:.4f}", f"{perda_val:.4f}",
-                                    f"{taxa_no_passo(cfg, passo):.6f}", f"{tokens_por_segundo:.0f}", f"{segundos:.0f}"])
+                                    f"{taxa:.6f}", f"{tokens_por_segundo:.0f}", f"{segundos:.0f}"])
         if quadro:
             quadro.add_scalar("perda/validacao", perda_val, passo)
             quadro.add_text("amostra", amostra, passo)
@@ -151,16 +176,20 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
     inicio = time.time()
     limite = inicio + cfg.horas * 3600 if cfg.horas else None
     media, marca, passo_da_marca = None, inicio, passo
-    tokens_por_segundo = 0.0
+    tokens_por_segundo, taxa = 0.0, 0.0
     modelo.train()
     pedido_de_parada = pasta / "PARAR"  # o serviço cria este arquivo quando você diz "para o treino"
     try:
-        while passo < cfg.passos and (limite is None or time.time() < limite):
+        while (meta is None or passo < meta) and (limite is None or time.time() < limite):
             if pedido_de_parada.exists():
                 pedido_de_parada.unlink(missing_ok=True)
                 avisar("parando a pedido: salvando o checkpoint...")
                 break
-            taxa = taxa_no_passo(cfg, passo)
+            if por_horas:
+                taxa = taxa_na_sessao(cfg, passo - passo_inicial, (time.time() - inicio) / (cfg.horas * 3600),
+                                      continuando=passo_inicial > 0)
+            else:
+                taxa = taxa_no_passo(cfg, passo)
             for _ in range(cfg.acumular):
                 x, y = treino.pegar(dispositivo)
                 _, perda = modelo(x, y)
@@ -179,9 +208,14 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
                 agora = time.time()
                 tokens_por_segundo = (passo - passo_da_marca) * cfg.acumular * cfg.lote * contexto / (agora - marca)
                 marca, passo_da_marca = agora, passo
-                faltam = (cfg.passos - passo) * cfg.acumular * cfg.lote * contexto / tokens_por_segundo
-                avisar(f"passo {passo:6d}/{cfg.passos} | perda {media:.3f} | taxa {taxa:.2e} | "
-                       f"{tokens_por_segundo:,.0f} tok/s | faltam {faltam / 3600:.1f} h para a meta")
+                if meta is None:
+                    faltam = max(limite - agora, 0.0)
+                    avisar(f"passo {passo:6d} | perda {media:.3f} | taxa {taxa:.2e} | "
+                           f"{tokens_por_segundo:,.0f} tok/s | faltam {faltam / 3600:.1f} h desta sessão")
+                else:
+                    faltam = (meta - passo) * cfg.acumular * cfg.lote * contexto / tokens_por_segundo
+                    avisar(f"passo {passo:6d}/{meta} | perda {media:.3f} | taxa {taxa:.2e} | "
+                           f"{tokens_por_segundo:,.0f} tok/s | faltam {faltam / 3600:.1f} h para a meta")
                 if quadro:
                     quadro.add_scalar("perda/treino", media, passo)
                     quadro.add_scalar("taxa", taxa, passo)

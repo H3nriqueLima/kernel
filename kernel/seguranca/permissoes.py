@@ -26,6 +26,7 @@ ligado e sem você ter mandado parar.
 from __future__ import annotations
 
 import ipaddress
+import os
 import secrets
 import time
 from dataclasses import asdict, dataclass
@@ -35,6 +36,29 @@ from urllib.parse import urlsplit
 
 # Nomes que nunca são da internet pública: a própria máquina e as redes de casa ou de empresa.
 _SUFIXOS_LOCAIS = (".localhost", ".local", ".lan", ".home", ".internal", ".intranet", ".corp", ".home.arpa")
+
+
+# Pastas que os programas criam ao instalar ou montar coisas. Nunca têm documento seu.
+_DE_MONTAGEM = frozenset({"obj", "bin", "node_modules", "site-packages", "dist-packages", "__pycache__",
+                          "bower_components", "vendor", "packages"})
+# Logo abaixo da raiz de um disco, estas pastas são do Windows ou de fabricantes de peças.
+_DE_SISTEMA_NA_RAIZ = frozenset({"windows", "windows.old", "programdata", "$recycle.bin", "system volume information",
+                                 "recovery", "perflogs", "msocache", "config.msi", "$windows.~bt", "$windows.~ws",
+                                 "$winreagent", "intel", "amd", "nvidia", "drivers", "boot", "efi", "onedrivetemp"})
+_COMECO_DE_SISTEMA = ("program files", "arquivos de programas")
+
+
+def _pastas_do_windows() -> tuple[str, ...]:
+    """Onde este Windows guarda o sistema e os programas (podem não estar em C:), em minúsculas e com a barra no fim."""
+    achadas = []
+    for variavel in ("SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "ProgramData"):
+        valor = os.environ.get(variavel)
+        if valor:
+            achadas.append(valor.replace("/", "\\").rstrip("\\").lower() + "\\")
+    return tuple(dict.fromkeys(achadas))
+
+
+_DO_WINDOWS = _pastas_do_windows()
 
 
 def endereco_local(anfitriao: str) -> bool:
@@ -137,21 +161,52 @@ class Seguranca:
         nome = nome.lower()
         return any(proibido in nome for proibido in self.cfg.exploracao.nunca)
 
+    def fora_de_alcance(self, real: Path | str, raiz: Path | str) -> str | None:
+        """Por que um caminho de dentro de uma pasta liberada fica fora da exploração. None = pode olhar.
+
+        ``real`` já vem resolvido e ``raiz`` é a pasta liberada que o contém. A pasta liberada em si
+        você escolheu; as regras valem para o que está abaixo dela. São só contas com o texto do
+        caminho (nenhuma ida ao disco), então dá para conferir dezenas de milhares por segundo.
+        """
+        cfg = self.cfg.exploracao
+        inteiro = str(real).replace("/", "\\").lower()
+        base = str(raiz).replace("/", "\\").lower().rstrip("\\")
+        partes = [parte for parte in inteiro[len(base):].split("\\") if parte]
+        na_raiz_do_disco = len(base) == 2 and base.endswith(":")   # a pasta liberada é um disco inteiro ("c:")
+        for i, nome in enumerate(partes):
+            if self.nome_ruim(nome):
+                return "nunca"
+            if not cfg.ocultos and nome.startswith(".") and len(nome) > 1:
+                return "oculto"
+            if not cfg.pastas_de_sistema:
+                if nome in _DE_MONTAGEM:
+                    return "montagem"
+                if na_raiz_do_disco and i == 0 and (nome in _DE_SISTEMA_NA_RAIZ or nome.startswith(_COMECO_DE_SISTEMA)):
+                    return "sistema"
+        if not cfg.pastas_de_sistema and partes:
+            for do_windows in _DO_WINDOWS:
+                if (inteiro + "\\").startswith(do_windows) and not (base + "\\").startswith(do_windows):
+                    return "sistema"
+        return None
+
+    def motivo_de_fora(self, caminho: Path) -> str | None:
+        """O mesmo que ``fora_de_alcance``, para um caminho qualquer: acha a pasta liberada e confere."""
+        achado = self._raiz_de(caminho)
+        if achado is None:
+            return "fora"
+        real, raiz = achado
+        try:  # a própria memória e o registro não são assunto de exploração
+            if any(real.is_relative_to(dele.resolve()) for dele in (self.cfg.dados, self.cfg.raiz / "dados")):
+                return "dados"
+        except OSError:
+            return "dados"
+        return self.fora_de_alcance(real, raiz)
+
     def pode_explorar(self, caminho: Path) -> bool:
         """Ele pode olhar este caminho por conta própria, sem perguntar? (Sempre só leitura.)"""
         if self.modo_seguro or self.pausado or not self.cfg.exploracao.ligada:
             return False
-        achado = self._raiz_de(caminho)
-        if achado is None:
-            return False
-        real, raiz = achado
-        try:  # a própria memória e o registro não são assunto de exploração
-            if any(real.is_relative_to(dele.resolve()) for dele in (self.cfg.dados, self.cfg.raiz / "dados")):
-                return False
-        except OSError:
-            return False
-        # A pasta liberada em si você escolheu; a lista ``nunca`` vale para o que está dentro dela.
-        return not any(self.nome_ruim(parte) for parte in real.relative_to(raiz).parts)
+        return self.motivo_de_fora(caminho) is None
 
     def pode_ler(self, caminho: Path) -> bool:
         """Além de ver que o arquivo existe, ele pode abrir e ler o conteúdo?"""

@@ -83,7 +83,9 @@ def test_sobre_si(kernel):
     dizer(kernel, "quem é você")
     resposta = falas(kernel)[-1]
     assert "K.E.R.N.E.L" in resposta and "Kinetic Extended Resolution Network and Evolutionary Logic" in resposta
-    assert "ainda não treinado" in resposta
+    assert "ainda não treinado" in kernel.apresentacao()
+    dizer(kernel, "como está o seu cérebro?")
+    assert "ainda não foi treinado" in falas(kernel)[-1]
 
 
 def test_organizacao_arruma_a_memoria_sozinha(kernel):
@@ -112,6 +114,10 @@ def test_curiosidade_pergunta_e_guarda_a_resposta(kernel, relogio):
     assert "gerente financeira" in falas(kernel)[-1]
 
     relogio.avancar(hours=2)
+    kernel.impulsos.valores["curiosidade"] = 0.9
+    assert kernel.volta(5) == "nada"               # você saiu: ele não fica perguntando para ninguém
+    dizer(kernel, "voltei")
+    relogio.avancar(minutes=5)
     kernel.impulsos.valores["curiosidade"] = 0.9
     assert kernel.volta(5) == "procurar_novidade"  # não repete a mesma pergunta
     assert kernel.impulsos.valores["curiosidade"] < 0.9

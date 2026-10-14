@@ -378,6 +378,29 @@ def cerebro(args) -> int:
             print("Ainda não há cérebro treinado em dados/cerebro.")
             return 1
         print(args.texto + modelo.continuar(args.texto, args.tokens, args.temperatura, cfg.cerebro.top_k))
+
+    elif args.acao == "avaliar":
+        import math
+
+        from .cerebro import inferencia
+        modelo = inferencia.carregar(cfg)
+        if modelo is None:
+            print("Ainda não há cérebro treinado em dados/cerebro.")
+            return 1
+        print(modelo.descricao)
+        historia = inferencia.historico(pasta)
+        if historia:
+            print(f"treino: {historia['passos']} passos, {historia['horas']:.1f} h, {historia['tokens'] / 1e6:.0f} mi de tokens lidos | "
+                  f"perda de validação {historia['primeira']:.2f} -> {historia['perda']:.2f} (melhor {historia['melhor']:.2f})")
+        medida = inferencia.avaliar(modelo, pasta, args.janelas)
+        if medida:
+            print(f"medido agora em {medida['tokens']} tokens que ele nunca viu: perda {medida['perda']:.3f}, "
+                  f"perplexidade {medida['perplexidade']:.1f} (em dúvida entre ~{medida['perplexidade']:.0f} pedaços a cada passo; "
+                  f"um chute às cegas seria {modelo.cfg['vocab']}, e log dele {math.log(modelo.cfg['vocab']):.2f})")
+        inicio = time.time()
+        for comeco in ("O Brasil é", "A inteligência artificial é", "Em 1500,"):
+            print(f"  {comeco} {modelo.responder(comeco, 50, cfg.cerebro.temperatura, cfg.cerebro.top_k)}")
+        print(f"(3 amostras em {time.time() - inicio:.1f} s)")
     return 0
 
 
@@ -497,8 +520,8 @@ def main(argv: list[str] | None = None) -> int:
     acoes.add_parser("preparar", help="tokeniza o corpus em treino.bin e val.bin").add_argument("--corpus")
     a = acoes.add_parser("treinar", help="treina (ou continua treinando) o mini GPT")
     a.add_argument("--tamanho", choices=["nano", "mini", "pequeno"])
-    a.add_argument("--passos", type=int, default=20_000)
-    a.add_argument("--horas", type=float, default=None)
+    a.add_argument("--passos", type=int, default=None, help="meta total de passos (sem isso e sem --horas: 20000)")
+    a.add_argument("--horas", type=float, default=None, help="uma sessão de N horas, continuando de onde parou")
     a.add_argument("--lote", type=int, default=None, help="padrão: o que cabe na RX 570 para o tamanho")
     a.add_argument("--acumular", type=int, default=None)
     a.add_argument("--taxa", type=float, default=6e-4)
@@ -507,6 +530,8 @@ def main(argv: list[str] | None = None) -> int:
     a = acoes.add_parser("medir", help="mede a velocidade de treino neste PC")
     a.add_argument("--tamanho", choices=["nano", "mini", "pequeno"])
     a.add_argument("--dispositivo", choices=["auto", "directml", "cuda", "cpu"])
+    a = acoes.add_parser("avaliar", help="mede o cérebro treinado e mostra amostras")
+    a.add_argument("--janelas", type=int, default=24)
     a = acoes.add_parser("gerar", help="pede um texto ao cérebro treinado")
     a.add_argument("texto")
     a.add_argument("--tokens", type=int, default=80)

@@ -11,10 +11,12 @@ vez, em segundo plano, e pode ser interrompido.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 from ..maos.base import ErroFerramenta, Ferramenta
@@ -36,6 +38,9 @@ class Estudo:
         self.situacao = ""
         self._parar = threading.Event()
         self._processo: subprocess.Popen | None = None
+        # Até quando vai o treino que você aprovou. Se o serviço reiniciar antes, ele retoma sozinho.
+        self._arquivo_do_treino = Path(cfg.dados) / "treino_pendente.json"
+        self._mantendo = False
 
     @property
     def ocupado(self) -> bool:
@@ -66,9 +71,22 @@ class Estudo:
             raise _Interrompido
         self.situacao = situacao
 
-    def parar(self) -> bool:
+    def treino_pendente(self) -> float:
+        """Horas que faltam de um treino aprovado que um reinício do serviço interrompeu (0 = nenhum)."""
+        try:
+            ate = float(json.loads(self._arquivo_do_treino.read_text(encoding="utf-8"))["ate"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return 0.0
+        return max(ate - time.time(), 0.0) / 3600
+
+    def parar(self, manter: bool = False) -> bool:
+        """Para o trabalho em curso. ``manter`` é o serviço desligando: o treino fica pendente para ser
+        retomado na próxima partida. Sem ``manter`` foi você que mandou parar, e ele não retoma."""
+        if not manter:
+            self._arquivo_do_treino.unlink(missing_ok=True)
         if not self.ocupado:
             return False
+        self._mantendo = manter
         self._parar.set()
         (self.cfg.pasta("cerebro") / ARQUIVO_DE_PARADA).write_text("parar\n")  # o treino confere a cada passo
         return True
@@ -109,7 +127,9 @@ class Estudo:
 
     # ------------------------------------------------------------------- treino
     def treinar_cerebro(self, horas: float) -> None:
+        self._mantendo = False
         self._comecar("treinar o cérebro", self._treinar, horas)
+        self._arquivo_do_treino.write_text(json.dumps({"ate": time.time() + horas * 3600}), encoding="utf-8")
 
     def _treinar(self, horas: float) -> str:
         from ..cerebro import dados, tokenizador
@@ -142,9 +162,12 @@ class Estudo:
                 self.situacao = linha[:160]
         codigo = self._processo.wait()
         self._processo = None
+        if not self._mantendo:
+            self._arquivo_do_treino.unlink(missing_ok=True)
         if codigo != 0:
             raise RuntimeError(ultima or f"o treino saiu com código {codigo}")
-        return f"Treino encerrado. {ultima}"
+        ultima = ultima.replace(" Reinicie o serviço para ele usar o cérebro novo.", "")
+        return f"Treino encerrado. {ultima} Já estou usando o cérebro novo."
 
 
 class EstudarWikipedia(Ferramenta):

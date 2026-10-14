@@ -53,14 +53,19 @@ def hora_ou_data(texto: str, agora: datetime) -> str | None:
     return None
 
 
-_CUMPRIMENTOS = {"oi", "ola", "opa", "e ai", "oi kernel", "ola kernel", "fala", "fala kernel", "eai", "salve"}
+_CUMPRIMENTOS = {"oi", "ola", "opa", "e ai", "oi kernel", "ola kernel", "fala", "fala kernel", "eai", "salve",
+                 "oie", "hello", "hi", "hey", "alo", "e ae", "eae", "hello kernel", "hi kernel", "oi oi", "ei"}
+_COMO_VAI = {"tudo bem", "tudo bom", "tudo certo", "como vai", "como vai voce", "beleza", "tudo bem com voce",
+             "e ai tudo bem", "oi tudo bem", "ola tudo bem", "tudo joia", "como voce esta", "tudo bem kernel"}
 _PERIODOS = {"bom dia": "Bom dia", "boa tarde": "Boa tarde", "boa noite": "Boa noite"}
 _AGRADECIMENTOS = {"obrigado", "obrigada", "muito obrigado", "valeu", "brigado", "obrigado kernel", "vlw", "valeu kernel"}
 _DESPEDIDAS = {"tchau", "ate mais", "ate amanha", "ate logo", "ate depois", "fui", "tchau kernel"}
 
 
 def saudacao(texto: str, usuario: str, lembretes_pendentes: int) -> str | None:
-    plano = _limpo(texto)
+    plano = re.sub(r"(\w)\1+\b", r"\1", _limpo(texto))   # "oiii" e "olaaa" são "oi" e "ola"
+    if plano in _COMO_VAI:
+        return f"Tudo certo por aqui, {usuario}. E com você?"
     lembrete = ""
     if lembretes_pendentes:
         plural = "lembrete pendente" if lembretes_pendentes == 1 else "lembretes pendentes"
@@ -83,9 +88,25 @@ _PARAR_ESTUDO = re.compile(r"\b(?:par[ae]\w*|cancel\w+|interromp\w+)\b.*\b(?:tre
 _ANDAMENTO = re.compile(r"\b(?:como (?:esta|vai|anda)|andamento|progresso|quanto falta)\b.*\b(?:treino|treinamento|estudo|download)\b")
 
 
+_PALAVRAS_DE_ESTUDO = ("estudo", "treino", "treinamento", "cerebro", "wikipedia", "download")
+
+
+def _consertar(plano: str) -> str:
+    """Um erro de dedo numa palavra de comando não pode mudar o que você pediu: "etudo" é "estudo"."""
+    import difflib
+
+    palavras = []
+    for palavra in plano.split():
+        if len(palavra) >= 5 and palavra not in _PALAVRAS_DE_ESTUDO:
+            parecida = difflib.get_close_matches(palavra, _PALAVRAS_DE_ESTUDO, n=1, cutoff=0.88)
+            palavra = parecida[0] if parecida else palavra
+        palavras.append(palavra)
+    return " ".join(palavras)
+
+
 def estudo(texto: str) -> tuple[str, dict] | None:
     """Pedidos de estudo longo: ("wikipedia", {...}), ("treinar", {...}), ("parar", {}) ou ("andamento", {})."""
-    plano = _limpo(texto)
+    plano = _consertar(_limpo(texto))
     if _PARAR_ESTUDO.search(plano):
         return "parar", {}
     if _ANDAMENTO.search(plano):

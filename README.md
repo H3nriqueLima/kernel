@@ -2,7 +2,7 @@
 
 **Kinetic Extended Resolution Network and Evolutionary Logic** — um Jarvis pessoal construído do zero, 100% local, no seu PC.
 
-Versão **0.4**: ele sai para a internet, pesquisa e guarda o que aprendeu, sozinho ou a seu pedido, sempre só lendo e sempre citando a fonte. Da 0.3 vem a voz montada com pedaços de fala de uma pessoa (difones + PSOLA); da 0.2, a autonomia para explorar o PC, o celular pela rede local e a interface com a orbe. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
+Versão **0.5**: uma rodada de ajustes antes do cérebro maior. A conversa ficou mais esperta (perguntas que ele não conhecia, "fale mais", perguntas sobre ele mesmo), ele explora com critério (sem perder tempo com o Windows), não fala sozinho quando você não está e conta o que aprendeu. Da 0.4 vem a pesquisa na internet; da 0.3, a voz de difones; da 0.2, a autonomia, o celular e a orbe. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Ligar e desligar
 
@@ -19,6 +19,10 @@ Quando você não está falando com ele, a curiosidade sobe. Ao passar do limiar
 - **responde sobre os seus arquivos:** `onde está o contrato?`, `o que você lembra sobre a padaria?`
 - **conta o que achou**, por conta própria ou quando você pergunta `o que você descobriu?`
 - **pergunta o que não conhece:** se um nome aparece em vários arquivos, ele pergunta quem é e guarda a resposta.
+
+**Ele trabalha calado quando você não está.** Depois de 15 minutos sem você falar, ele continua explorando e estudando, mas não puxa assunto nem faz perguntas. Quando você volta, conta de uma vez: "Enquanto você esteve fora (3 h), li 12 arquivos seus e estudei 18 assuntos na internet". O tempo é `minutos_de_presenca`, em `[mente]`.
+
+**Ele explora com critério.** Mesmo que você libere um disco inteiro, ele pula o Windows, os programas instalados, as pastas que os programas montam (`obj`, `bin`, `node_modules`) e o que começa com ponto (`.claude`, `.aws`: configuração de programas, onde costumam ficar chaves de acesso). Lê só documentos (texto, Word, Excel, PowerPoint, PDF); código e configuração entram no mapa pelo nome. De um arquivo de texto ele só guarda o que for prosa em português ou inglês. Quando essas regras mudam, na partida seguinte ele esquece o que tinha lido fora do alcance novo. Tudo se religa em `[exploracao]`: `pastas_de_sistema`, `ocultos`, `ler_codigo`.
 
 ### O que ele pode e o que não pode
 
@@ -52,7 +56,9 @@ Com a internet ligada, ele faz três coisas:
 - **Pesquisa quando você pede:** `pesquisa sobre buracos negros`, `procura na internet quem foi Santos Dumont`, `lê a página https://...`. Depois: `o que você pesquisou?` e `abre a fonte`.
 - **Pesquisa por conta própria** quando está ocioso, alternando com a exploração do PC: um fôlego nas pastas, um assunto na internet. A fila de assuntos vem do que você perguntou ou pediu, da lista `interesses` e dos assuntos vizinhos do que ele acabou de ler (até dois passos de distância).
 
-O que ele lê vira memória do tipo `pesquisa`, em pedaços, cada um com o endereço de onde veio. Na segunda vez que você pergunta a mesma coisa, ele responde da memória, sem voltar à rede.
+O que ele lê vira memória do tipo `pesquisa`, em pedaços, cada um com o endereço de onde veio. De cada assunto ele também guarda um resumo de três frases (tipo `saber`), escolhidas do que leu, sem inventar nada (`kernel/conhecimento/resumo.py`). É com isso que ele responde na segunda vez, sem voltar à rede, e conta o que aprendeu: `o que você aprendeu?`, `o que você aprendeu sobre redes neurais?`.
+
+Os `interesses` do `kernel.toml` entram na fila assim que você reinicia o serviço e passam na frente dos assuntos vizinhos. São uns 10 assuntos por hora (o teto por hora protege os sites; a API da Wikipédia não entra na conta), então uma lista de 400 interesses leva uns dois dias de PC ligado.
 
 ### Onde ele procura
 
@@ -90,6 +96,18 @@ python -m kernel internet pesquisar "fotossíntese"
 python -m kernel internet ler https://pt.wikipedia.org/wiki/Astronomia
 python -m kernel internet estado
 ```
+
+## A conversa
+
+Ele ainda não conversa livremente: quem entende as frases são um classificador pequeno e regras, não o cérebro. O que já funciona:
+
+- **Perguntas**, mesmo as que o classificador nunca viu: vão para o que ele estudou, para o que já pesquisou e, por fim, para a internet.
+- **Continuar o assunto:** `fale mais`, `explica melhor`, `e o que mais?`, `fale mais sobre buracos negros`.
+- **Perguntas sobre ele** (`kernel/nucleo/sobre_si.py`): `o que você sabe fazer?`, `quais pastas você pode ver?`, `como está o seu cérebro?`, `quem te criou?`, `você tem sentimentos?`. A resposta é montada com o estado de verdade (as pastas da configuração, a perda do último treino), não com um texto decorado.
+- **Pedidos diretos:** `explore o computador`, `para`, `pode continuar`, `pesquisa sobre...`, `treina o cérebro por 6 horas`.
+- **O cérebro, quando você chama:** `completa: Era uma vez` mostra o que ele escreve. Na conversa normal ele fica de fora (`[cerebro] na_conversa = false`), porque um cérebro deste tamanho escreve português com gramática e sem sentido.
+
+Quando ele pergunta algo ("vi 'Padaria Estrela' em 4 arquivos; quem é?"), só vale como resposta uma fala que pareça resposta; se você mudar de assunto, a dúvida continua aberta em vez de ele guardar a sua frase como se fosse a explicação.
 
 ## A interface
 
@@ -219,7 +237,8 @@ python -m kernel cerebro bigrama                   o modelo de linguagem mais si
 python -m kernel cerebro wikipedia --partes 1      baixa e limpa a Wikipédia PT
 python -m kernel cerebro tokenizador               treina o BPE de 4096 tokens
 python -m kernel cerebro preparar                  tokeniza o corpus
-python -m kernel cerebro treinar --horas 8         treina o mini GPT na RX 570
+python -m kernel cerebro treinar --horas 8         treina o mini GPT na RX 570 (cada sessão continua de onde a outra parou)
+python -m kernel cerebro avaliar                   perda, perplexidade e amostras do cérebro treinado
 python -m kernel cerebro gerar "O Brasil é"        pede um texto ao cérebro
 ```
 
@@ -252,7 +271,7 @@ A palavra de ativação (`python -m kernel ouvidos gravar ...`) precisa de um mi
 .venv\Scripts\python.exe -m pytest
 ```
 
-Mais de 300 testes: exploração (o que olha e o que nunca olha), o freio, a internet (numa internet de mentira: nenhum teste sai para a rede), contas, enciclopédia, a voz de ponta a ponta (PSOLA, alinhador e um banco de difones montado na hora), pareamento do celular, a API por HTTP de verdade, memória, segurança, mãos, o núcleo de ponta a ponta e o cérebro.
+Mais de 330 testes: exploração (o que olha e o que nunca olha), o freio, a internet (numa internet de mentira: nenhum teste sai para a rede), contas, enciclopédia, a voz de ponta a ponta (PSOLA, alinhador e um banco de difones montado na hora), pareamento do celular, a API por HTTP de verdade, memória, segurança, mãos, o núcleo de ponta a ponta e o cérebro.
 
 ## O que ainda não existe
 

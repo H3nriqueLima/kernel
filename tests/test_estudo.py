@@ -153,3 +153,44 @@ def test_contar_artigos_nao_trava_enquanto_um_estudo_regrava_o_banco(tmp_path):
         estudo.close()
     assert len(enciclopedia) == quantos
     enciclopedia.fechar()
+
+
+def test_treino_aprovado_sobrevive_ao_reinicio_do_servico(cfg, relogio, monkeypatch):
+    """Você aprova 8 horas de treino e reinicia o serviço aos 45 minutos: na partida seguinte ele retoma sozinho."""
+    from kernel.nucleo import Kernel
+
+    (cfg.pasta("cerebro") / "corpus.txt").write_text(CORPUS * 30, encoding="utf-8")
+    comandos = []
+
+    class Processo:
+        def __init__(self, comando, **opcoes):
+            comandos.append(comando)
+            self.stdout = iter(["parou no passo 100 com perda de validação 4.321. Reinicie o serviço para ele usar o cérebro novo.\n"])
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setattr(modulo_estudo.subprocess, "Popen", Processo)
+    primeiro = Kernel(cfg, relogio=relogio)
+    assert primeiro.estudo.treino_pendente() == 0.0
+    primeiro.estudo._arquivo_do_treino.write_text('{"ate": %f}' % (time.time() + 3 * 3600), encoding="utf-8")
+    assert 2.9 < primeiro.estudo.treino_pendente() <= 3.0               # o reinício pegou o treino no meio
+    primeiro.fechar()
+
+    segundo = Kernel(cfg, relogio=relogio)
+    segundo._retomar_treino()
+    assert "Retomei o treino do cérebro" in falas(segundo)[-1] and "faltavam 3,0 horas" in falas(segundo)[-1]
+    esperar(segundo, 60)
+    assert comandos[0][1:5] == ["-m", "kernel", "cerebro", "treinar"] and 2.9 < float(comandos[0][-1]) <= 3.0
+    assert segundo.estudo.treino_pendente() == 0.0                      # terminou: não há mais o que retomar
+    assert not any("Reinicie o serviço" in e.get("resultado", "") for e in segundo.registro.ultimos(20) if e["tipo"] == "estudo")
+    segundo.fechar()
+
+    # quando é VOCÊ que manda parar, ele não retoma na partida seguinte
+    terceiro = Kernel(cfg, relogio=relogio)
+    terceiro.estudo._arquivo_do_treino.write_text('{"ate": %f}' % (time.time() + 3600), encoding="utf-8")
+    dizer(terceiro, "para o treino")
+    assert terceiro.estudo.treino_pendente() == 0.0
+    terceiro._retomar_treino()
+    assert not any("Retomei" in fala for fala in falas(terceiro))
+    terceiro.fechar()

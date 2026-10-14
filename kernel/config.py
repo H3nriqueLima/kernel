@@ -42,11 +42,20 @@ class ConfigExploracao:
     ligada: bool = True         # pode olhar as pastas liberadas por conta própria (só leitura)
     ler_arquivos: bool = True   # pode ler o texto dos arquivos (False = só os nomes)
     ritmo: str = "normal"       # calmo | normal | intenso
+    # False = pula o Windows, os programas instalados e as pastas que os programas montam (obj, bin,
+    # node_modules...). Lá não há documento seu: são dezenas de milhares de arquivos de sistema.
+    pastas_de_sistema: bool = False
+    # False = pula o que começa com ponto (.claude, .aws, .config...): é configuração de programa,
+    # e é onde programas costumam guardar chaves de acesso.
+    ocultos: bool = False
+    # False = código e arquivos de configuração entram no mapa pelo nome, mas ele não lê o conteúdo.
+    ler_codigo: bool = False
     # Pedaços de nome de pasta ou arquivo que ele sempre pula, em qualquer lugar.
     nunca: list[str] = field(
         default_factory=lambda: [
             "senha", "password", "passwd", "segredo", "secret", "token", "credencia", "credential",
-            "wallet", "id_rsa", ".ssh", ".gnupg", ".env", ".pem", ".key", ".pfx", ".kdbx",
+            "wallet", "id_rsa", "id_ed25519", ".ssh", ".gnupg", ".env", ".pem", ".key", ".pfx", ".kdbx",
+            "cookies", "login data", "keychain", ".netrc", ".npmrc", ".pypirc",
             "appdata", "node_modules", ".git", ".venv", "__pycache__", "$recycle.bin",
         ]
     )
@@ -113,6 +122,10 @@ class ConfigCerebro:
     temperatura: float = 0.8
     top_k: int = 40
     max_tokens: int = 60
+    # True = numa conversa, o cérebro acrescenta uma fala dele. Vem desligado porque o cérebro pequeno
+    # completa texto sem sentido; ele entra na conversa quando for ajustado para diálogo (fase 4).
+    # Para vê-lo escrever a qualquer hora, diga "completa: " e o começo de uma frase.
+    na_conversa: bool = False
 
 
 @dataclass
@@ -131,6 +144,9 @@ class ConfigMente:
     minutos_entre_perguntas: float = 20.0
     social_por_novidade: float = 0.02      # vontade de contar o que descobriu, por descoberta
     minutos_entre_relatos: float = 30.0
+    # Depois deste tempo sem você falar, ele entende que você saiu: continua explorando e estudando,
+    # mas não puxa assunto nem pergunta nada. Quando você volta, conta de uma vez o que fez.
+    minutos_de_presenca: float = 15.0
     hora_do_diario: int = 23
     termos_para_lembrar: int = 2         # termos em comum para ele citar uma memória na conversa
 

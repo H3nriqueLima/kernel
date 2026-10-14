@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import urlsplit
 
+from ..conhecimento.resumo import resumir
 from ..exploracao.leitores import pedacos
 from ..memoria.texto import normalizar, termos
 from . import fontes
@@ -51,7 +52,8 @@ CREATE TABLE IF NOT EXISTS assuntos (
     feito_em     TEXT,
     tentativas   INTEGER NOT NULL DEFAULT 0,
     paginas      INTEGER NOT NULL DEFAULT 0,
-    trechos      INTEGER NOT NULL DEFAULT 0
+    trechos      INTEGER NOT NULL DEFAULT 0,
+    resumo       TEXT NOT NULL DEFAULT ''        -- três frases do que ele leu: é o que ele "aprendeu"
 );
 CREATE TABLE IF NOT EXISTS paginas (
     url     TEXT PRIMARY KEY,
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS paginas (
 """
 _ORDEM = ("CASE origem WHEN 'pedido' THEN 0 WHEN 'pergunta' THEN 0 WHEN 'interesse' THEN 1 WHEN 'conversa' THEN 1 "
           "WHEN 'arquivos' THEN 2 ELSE 3 END")
+_SO_SOZINHO = "AND origem NOT IN ('pedido', 'pergunta')"   # o que ele estudou sem você pedir
 PROFUNDIDADE_MAXIMA = 2     # relacionados de relacionados, e para aí
 FILA_CHEIA = 30             # com isso na fila, os relacionados deixam de entrar
 ENTRE_BUSCAS = 20.0         # segundos entre duas consultas ao buscador, por conta própria
@@ -93,6 +96,8 @@ class Resultado:
     fontes: list[Fonte] = field(default_factory=list)
     trechos: int = 0
     resposta: str = ""                  # duas ou três frases da melhor fonte
+    resumo: str = ""                    # as frases que melhor resumem tudo o que foi lido
+    texto: str = ""                     # o texto da melhor fonte (para "fale mais")
     relacionados: list[str] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)   # o que não deu certo, em palavras
     respondeu: bool = False             # alguma fonte chegou a responder (mesmo que sem nada sobre o assunto)
@@ -130,7 +135,7 @@ def melhor_artigo(termo: str, achados: list) -> object | None:
         do_titulo = set(termos(re.sub(r"\(.*?\)", " ", achado.titulo))) or set(termos(achado.titulo))
         em_comum = len(pedidas & do_titulo)
         nota = em_comum / len(do_titulo) if do_titulo else 0.0
-        # E o inverso: o artigo "Guarulhos" não responde "temperatura atual no centro de Guarulhos".
+        # E o inverso: o artigo "Campinas" não responde "temperatura atual no centro de Campinas".
         # O título (ou o começo do artigo) tem de dar conta de pelo menos metade do que foi pedido.
         cobre = em_comum * 2 >= len(pedidas) or fala_de(termo, achado.titulo + " " + achado.texto[:600])
         if cobre and nota > nota_do_melhor:   # no empate fica o que a busca pôs primeiro
@@ -156,6 +161,10 @@ class Pesquisador:
         self._trava = threading.RLock()
         self._bd = sqlite3.connect(str(cfg.dados / "internet.db"), check_same_thread=False)
         self._bd.executescript(_ESQUEMA)
+        if "resumo" not in [coluna[1] for coluna in self._bd.execute("PRAGMA table_info(assuntos)")]:
+            self._bd.execute("ALTER TABLE assuntos ADD COLUMN resumo TEXT NOT NULL DEFAULT ''")   # banco de antes da v0.5
+        self._textos: list[str] = []
+        self._interesses_vistos: tuple | None = None
         self._ultima_busca = -1e9
         self._buscador_volta_em = 0.0
 
@@ -197,13 +206,25 @@ class Pesquisador:
     def _semear(self) -> None:
         """Fila vazia: entram os seus interesses, os assuntos das suas perguntas recentes e, se você
         liberou, os assuntos dos seus arquivos. Quem já foi pesquisado não entra de novo."""
-        for interesse in self.cfg.internet.interesses:
-            self.pedir(str(interesse), "interesse")
+        self._semear_interesses()
         for assunto in self._assuntos_das_conversas():
             self.pedir(assunto, "conversa")
         if self.cfg.internet.assuntos_dos_arquivos:
             for assunto in self._assuntos_dos_arquivos():
                 self.pedir(assunto, "arquivos")
+
+    def _semear_interesses(self) -> None:
+        """Os interesses do kernel.toml entram na fila assim que aparecem lá, mesmo com a fila cheia."""
+        agora = tuple(str(i) for i in self.cfg.internet.interesses)
+        if agora != self._interesses_vistos:
+            self._interesses_vistos = agora
+            for interesse in agora:
+                self.pedir(interesse, "interesse")
+
+    def esquecer_origem(self, origem: str) -> int:
+        """Tira da fila os assuntos de uma origem que ainda não foram pesquisados."""
+        with self._trava, self._bd:
+            return self._bd.execute("DELETE FROM assuntos WHERE estado = 'novo' AND origem = ?", (origem,)).rowcount
 
     def _anotar_assunto(self, termo: str, origem: str, profundidade: int, resultado: Resultado) -> None:
         chave = _chave(termo)
@@ -214,8 +235,9 @@ class Pesquisador:
                 "INSERT OR IGNORE INTO assuntos (termo, mostrar, origem, profundidade, criado_em) VALUES (?,?,?,?,?)",
                 (chave, termo, origem, profundidade, self._agora()))
             if resultado.fontes:
-                self._bd.execute("UPDATE assuntos SET estado = 'feito', feito_em = ?, paginas = ?, trechos = ? WHERE termo = ?",
-                                 (self._agora(), len(resultado.fontes), resultado.trechos, chave))
+                self._bd.execute(
+                    "UPDATE assuntos SET estado = 'feito', feito_em = ?, paginas = ?, trechos = ?, resumo = ? WHERE termo = ?",
+                    (self._agora(), len(resultado.fontes), resultado.trechos, resultado.resumo, chave))
             else:
                 # Sem resposta de ninguém (sem rede, barrado): tenta de novo outra hora, até três vezes.
                 desiste = resultado.respondeu
@@ -227,13 +249,17 @@ class Pesquisador:
     # --------------------------------------------------------------- pesquisar
     def pode_sozinho(self) -> bool:
         """Ele pode sair pesquisando agora, por conta própria?"""
-        return (self.seguranca.pode_navegar(f"https://{fontes.WIKIPEDIA}/", True)
-                and self.navegador.restam() >= 3)
+        if not self.seguranca.pode_navegar(f"https://{fontes.WIKIPEDIA}/", True):
+            return False
+        # só começa um assunto se o teto desta hora dá para ele inteiro: a busca e as páginas
+        precisa = 1 + self.cfg.internet.paginas_por_assunto if self.cfg.internet.buscador else 0
+        return self.navegador.restam() >= precisa
 
     def passo(self) -> dict | None:
         """Um passo por conta própria: pesquisa o próximo assunto da fila. None se não há o que fazer (ou não pode)."""
         if not self.pode_sozinho():
             return None
+        self._semear_interesses()
         proximo = self._proximo()
         if proximo is None:
             self._semear()
@@ -253,6 +279,7 @@ class Pesquisador:
         """Pesquisa um assunto agora e guarda o que leu. ``Interrompido`` sobe se mandarem parar no meio."""
         termo = " ".join(termo.split())[:120]
         resultado = Resultado(termo)
+        self._textos = []
         tem_wikipedia = False
         try:
             achados = fontes.wikipedia(self.navegador, termo, por_conta_propria)
@@ -276,6 +303,15 @@ class Pesquisador:
         if self.cfg.internet.buscador and self.cfg.internet.paginas_por_assunto > 0:
             self._pela_web(resultado, termo, por_conta_propria)
 
+        if resultado.fontes:
+            # O que ele "aprendeu": as três frases que melhor resumem tudo o que leu. Fica na memória
+            # (tipo ``saber``) e na fila, para ele contar depois sem reler nada.
+            resultado.resumo = resumir(self._textos, termo, 3)
+            resultado.texto = self._textos[0]
+            if resultado.resumo:
+                origem_do_saber = f"internet:{_chave(termo)}"
+                self.memoria.apagar_origem("saber", origem_do_saber)
+                self.memoria.guardar_varios([f"Sobre {termo}: {resultado.resumo}"], tipo="saber", origem=origem_do_saber)
         self._anotar_assunto(termo, origem, profundidade, resultado)
         if resultado.fontes:
             self.memoria.podar("pesquisa", self.cfg.internet.trechos_maximos)
@@ -364,6 +400,7 @@ class Pesquisador:
                              (achado.url, titulo, achado.fonte, assunto, self._agora(), len(texto)))
         resultado.fontes.append(Fonte(titulo, achado.url, achado.fonte, len(texto)))
         resultado.trechos += len(trechos)
+        self._textos.append(texto)
         if not resultado.resposta:
             resultado.resposta = resumo(texto, assunto)
 
@@ -375,13 +412,47 @@ class Pesquisador:
         return {"pesquisados": feitos, "paginas": paginas, "na_fila": self.na_fila(),
                 "na_ultima_hora": self.navegador.na_ultima_hora(), "teto": self.cfg.internet.paginas_por_hora}
 
-    def feitos_desde(self, desde: str | None, n: int = 6) -> list[str]:
-        """Os assuntos pesquisados com proveito a partir de um instante (os mais recentes primeiro)."""
+    def feitos_desde(self, desde: str | None, n: int = 6, so_sozinho: bool = False) -> list[str]:
+        """Os assuntos pesquisados com proveito a partir de um instante (os mais recentes primeiro).
+        ``so_sozinho`` deixa de fora o que você mesmo pediu ou perguntou: isso você já viu."""
+        filtro = _SO_SOZINHO if so_sozinho else ""
         with self._trava:
             linhas = self._bd.execute(
-                "SELECT mostrar FROM assuntos WHERE estado = 'feito' AND feito_em >= ? ORDER BY feito_em DESC, rowid DESC LIMIT ?",
-                (desde or "", n)).fetchall()
+                f"SELECT mostrar FROM assuntos WHERE estado = 'feito' AND feito_em >= ? {filtro} "
+                "ORDER BY feito_em DESC, rowid DESC LIMIT ?", (desde or "", n)).fetchall()
         return [mostrar for (mostrar,) in linhas]
+
+    def quantos_desde(self, desde: str | None, so_sozinho: bool = False) -> int:
+        filtro = _SO_SOZINHO if so_sozinho else ""
+        with self._trava:
+            return self._bd.execute(f"SELECT COUNT(*) FROM assuntos WHERE estado = 'feito' AND feito_em >= ? {filtro}",
+                                    (desde or "",)).fetchone()[0]
+
+    def aprendidos(self, desde: str | None = None, n: int = 3) -> list[tuple[str, str]]:
+        """(assunto, resumo) dos últimos assuntos estudados que têm resumo."""
+        with self._trava:
+            return self._bd.execute(
+                "SELECT mostrar, resumo FROM assuntos WHERE estado = 'feito' AND resumo != '' AND feito_em >= ? "
+                "ORDER BY feito_em DESC, rowid DESC LIMIT ?", (desde or "", n)).fetchall()
+
+    def resumo_de(self, assunto: str) -> tuple[str, str, list[str]] | None:
+        """O que ele aprendeu sobre um assunto: (como foi pedido, resumo, endereços lidos). None se não estudou."""
+        palavras = _chave(assunto).split()
+        if not palavras:
+            return None
+        with self._trava:
+            linha = self._bd.execute("SELECT mostrar, resumo FROM assuntos WHERE estado = 'feito' AND termo = ?",
+                                     (" ".join(palavras),)).fetchone()
+            if linha is None:   # não é o nome exato: vale o assunto estudado que tem todas as palavras pedidas
+                filtro = " AND ".join("termo LIKE ?" for _ in palavras)
+                linha = self._bd.execute(
+                    f"SELECT mostrar, resumo FROM assuntos WHERE estado = 'feito' AND resumo != '' AND {filtro} "
+                    "ORDER BY LENGTH(termo) LIMIT 1", [f"%{p}%" for p in palavras]).fetchone()
+            if linha is None or not linha[1]:
+                return None
+            enderecos = [url for (url,) in
+                         self._bd.execute("SELECT url FROM paginas WHERE assunto = ? ORDER BY rowid LIMIT 4", (linha[0],))]
+        return linha[0], linha[1], enderecos
 
     def relato(self) -> str:
         """O que ele já pesquisou, em uma fala."""

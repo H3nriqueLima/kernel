@@ -342,7 +342,7 @@ def test_escolhe_o_artigo_que_trata_do_assunto():
     assert modulo.melhor_artigo("buracos negros", lista).titulo == "Buraco negro"
     assert modulo.melhor_artigo("capital da França", [achado("Paris"), achado("França")]).titulo == "França"
     # o artigo da cidade não responde uma pergunta comprida que só cita a cidade
-    assert modulo.melhor_artigo("temperatura atual no Jardim Tranquilidade em Guarulhos", [achado("Guarulhos")]) is None
+    assert modulo.melhor_artigo("temperatura atual no bairro do Cambuí em Campinas", [achado("Campinas")]) is None
 
 
 # ============================================================= o pesquisador
@@ -452,7 +452,7 @@ def test_a_memoria_de_pesquisa_tem_teto(online, web):
     online.memoria.guardar("um fato seu não entra nessa poda", tipo="fato")
     online.memoria.guardar_varios([f"trecho {i}" for i in range(6)], tipo="pesquisa", origem="https://x.example.com/")
     assert online.memoria.podar("pesquisa", 2) == 5
-    assert online.memoria.contar() == {"fato": 1, "pesquisa": 2, "total": 3}
+    assert online.memoria.contar() == {"fato": 1, "pesquisa": 2, "saber": 1, "total": 4}   # o resumo do assunto fica
     assert [l.texto for l in online.memoria.recentes(5, tipo="pesquisa")] == ["trecho 5", "trecho 4"]   # ficam os mais novos
 
 
@@ -573,7 +573,7 @@ def test_no_laco_ele_alterna_o_pc_e_a_internet(online, web, relogio):
 
     online.ultimo_relato = None                                        # e depois ele conta o que aprendeu
     online._contar_novidades(relogio())
-    assert "Na internet, pesquisei sobre fotossíntese" in falas(online)[-1]
+    assert falas(online)[-1].startswith("Novidades: estudei 1 assunto na internet (fotossíntese).")
 
 
 def test_o_que_vem_da_internet_e_texto_e_nao_ordem(online, web):
@@ -586,3 +586,68 @@ def test_o_que_vem_da_internet_e_texto_e_nao_ordem(online, web):
     assert not online.seguranca.pausado                                # nem acionou o freio
     assert not any("senha" in termo for (termo,) in online.pesquisador._bd.execute("SELECT termo FROM assuntos"))
     assert "abre a calculadora" in online.memoria.buscar("calculadora", k=1, tipos=("pesquisa",))[0].texto   # ficou só como texto lido
+
+
+# ------------------------------------------------- o que ele aprendeu (v0.5)
+def test_a_api_da_wikipedia_nao_gasta_o_teto_e_ele_so_comeca_o_que_pode_terminar(online, web):
+    navegador = online.pesquisador.navegador
+    online.cfg.internet.paginas_por_hora = 3
+    for _ in range(5):
+        fontes.wikipedia(navegador, "fotossíntese")                     # cinco consultas à API...
+    assert navegador.restam() == 3                                      # ...e o teto dos sites está inteiro
+    online.pesquisador.pedir("fotossíntese", "interesse")
+    assert online.pesquisador.pode_sozinho()                            # 1 busca + 2 páginas cabem em 3
+    online.cfg.internet.paginas_por_hora = 2
+    assert not online.pesquisador.pode_sozinho() and online.pesquisador.passo() is None   # não começa pela metade
+    online.cfg.internet.buscador = False                                # só com a Wikipédia não há o que economizar
+    assert online.pesquisador.pode_sozinho()
+
+
+def test_interesses_novos_entram_na_fila_mesmo_com_ela_cheia(online, web):
+    online.pesquisador.pedir("clorofila", "relacionado", 1)             # a fila já tem coisa
+    online.cfg.internet.interesses = ["fotossíntese"]
+    feito = online.pesquisador.passo()
+    assert (feito["termo"], feito["origem"]) == ("fotossíntese", "interesse")   # o seu interesse passa na frente
+    online.cfg.internet.interesses = ["fotossíntese", "unicórnios azuis"]       # você acrescentou mais um, com o serviço andando
+    online.pesquisador._semear_interesses()
+    assert "unicornios azuis" in [termo for (termo,) in online.pesquisador._bd.execute("SELECT termo FROM assuntos WHERE estado = 'novo'")]
+    assert online.pesquisador.esquecer_origem("relacionado") >= 1
+
+
+def test_o_que_ele_aprendeu_vira_resumo_e_ele_sabe_contar(online, web):
+    resultado = online.pesquisador.pesquisar("fotossíntese", por_conta_propria=True, origem="interesse")
+    assert resultado.resumo.startswith("Fotossíntese é o processo pelo qual plantas") and resultado.texto
+    saber = online.memoria.recentes(5, tipo="saber")
+    assert len(saber) == 1 and saber[0].texto.startswith("Sobre fotossíntese: Fotossíntese é o processo") \
+        and saber[0].origem == "internet:fotossintese"
+    mostrar, aprendido, enderecos = online.pesquisador.resumo_de("Fotossíntese")
+    assert mostrar == "fotossíntese" and aprendido == resultado.resumo and enderecos[0].startswith("https://pt.wikipedia.org/")
+    assert online.pesquisador.resumo_de("fotossintese das plantas") is None and online.pesquisador.resumo_de("") is None
+    assert online.pesquisador.aprendidos()[0] == ("fotossíntese", resultado.resumo)
+
+    pedidos = len(web.pedidos)
+    dizer(online, "o que você aprendeu sobre fotossíntese?")
+    resposta = online.mensagens[-1]
+    assert resposta["classe"] == "pesquisa" and resposta["texto"].startswith("Sobre fotossíntese, aprendi isto: Fotossíntese é")
+    assert resposta["fonte"].startswith("li em pt.wikipedia.org") and resposta["link"].startswith("https://pt.wikipedia.org/")
+    assert len(web.pedidos) == pedidos                                  # contou do que já sabia, sem voltar à rede
+    dizer(online, "fale mais")
+    assert online.mensagens[-1]["classe"] == "pesquisa" and online.mensagens[-1]["texto"] != resposta["texto"]
+    dizer(online, "o que você aprendeu?")
+    assert "Já pesquisei 1 assunto na internet" in falas(online)[-1] and "O que aprendi por último:" in falas(online)[-1]
+    assert "• fotossíntese: Fotossíntese é o processo" in falas(online)[-1]
+    dizer(online, "o que você aprendeu sobre dragões de komodo?")       # o que ele não estudou cai na memória
+    assert "Não achei nada sobre isso" in falas(online)[-1]
+
+
+def test_relato_da_ausencia_so_conta_o_que_ele_fez_sozinho(online, web, relogio):
+    online.pesquisador.pedir("clorofila", "interesse")
+    relogio.avancar(hours=2)
+    online.impulsos.valores["curiosidade"] = 0.9
+    assert online.volta(5) == "pesquisar" and falas(online) == []       # estudou calado, você não estava
+    dizer(online, "pesquisa sobre fotossíntese")                        # você volta já pedindo outra coisa
+    pedida, resumo = online.mensagens[-2:]
+    assert pedida["classe"] == "pesquisa" and resumo["classe"] == "iniciativa"
+    assert resumo["texto"].startswith("Enquanto você esteve fora (2 h), estudei 1 assunto na internet (clorofila).")
+    assert "fotossíntese" not in resumo["texto"]                        # o que você acabou de pedir não é novidade
+    assert 'pergunte "o que você aprendeu?"' in resumo["texto"]

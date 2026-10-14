@@ -22,6 +22,7 @@ def servidor(cfg):
         s.bind(("127.0.0.1", 0))
         porta = s.getsockname()[1]
     abertos = []
+    cfg.mente.hora_do_diario = 25   # estes testes usam o relógio de verdade: às 23h o diário não pode entrar na conversa
     kernel = Kernel(cfg, lancar=abertos.append)
     servidor = uvicorn.Server(uvicorn.Config(criar_app(kernel, CODIGO, eh_local=lambda p: p.headers.get("x-teste-remoto") != "1"), host="127.0.0.1", port=porta,
                                              log_level="error"))

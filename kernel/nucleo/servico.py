@@ -27,6 +27,7 @@ from .. import NOME, NOME_COMPLETO, VERSAO, comandos
 from ..cerebro import inferencia
 from ..comandos import calculo, extrair
 from ..conhecimento import Enciclopedia, assunto_da_pergunta
+from ..conhecimento.resumo import frases
 from ..exploracao import Explorador, Mapa, sistema
 from ..internet import Pesquisador
 from ..internet.pesquisador import resumo
@@ -37,7 +38,7 @@ from ..mente import Diario, Impulsos, Percepcao
 from ..registro import Registro
 from ..seguranca import ErroSeguranca, Seguranca, integridade
 from ..seguranca.aparelhos import Aparelhos
-from . import reflexos
+from . import dialogo, reflexos, sobre_si
 from .estudo import EstudarWikipedia, Estudo, TreinarCerebro
 
 # Palavras que fazem parte da pergunta ("o que você LEMBRA SOBRE...") e não do assunto.
@@ -70,6 +71,16 @@ def _como_voce_escreveu(texto: str, assunto: str) -> str:
         if planas[i:i + len(alvo)] == alvo:
             return " ".join(originais[i:i + len(alvo)])
     return assunto
+
+
+def _duracao(tempo: timedelta) -> str:
+    """ "40 min", "3 h", "2 dias": o tamanho de uma ausência, por alto."""
+    minutos = int(tempo.total_seconds() // 60)
+    if minutos < 90:
+        return f"{max(minutos, 1)} min"
+    if minutos < 36 * 60:
+        return f"{round(minutos / 60)} h"
+    return f"{round(minutos / 1440)} dias"
 
 
 def _site(url: str) -> str:
@@ -127,8 +138,13 @@ class Kernel:
                                        assuntos_das_conversas=self._assuntos_das_perguntas)
         self._perguntas_lidas = (0.0, [])        # (quando, assuntos): o registro do dia não é relido a toda hora
         self.pesquisador.navegador.interromper = self._largar_a_exploracao
+        if self.explorador.releu_tudo:           # as leituras foram refeitas: o que saiu delas para a fila também sai
+            self.pesquisador.esquecer_origem("arquivos")
         self._vez_da_internet = False            # alterna: um fôlego no PC, um assunto na internet
-        self._contou_a_internet_em = self.iniciado_em.isoformat(timespec="seconds")
+        self._contei_em = self.iniciado_em.isoformat(timespec="seconds")   # até onde vai o último relato
+        self._em_pauta: dict | None = None       # o assunto da última resposta, para o "fale mais"
+        self._perguntas_no_vazio = 0             # perguntas dele que ficaram sem resposta, seguidas
+        self._explorar_ja = False                # você mandou explorar agora: não espera o sossego
         self._ultima_fonte = ""                  # o endereço da última resposta tirada da internet ("abre a fonte")
         self._a_seu_pedido = ""                  # o que ele está pesquisando agora porque você pediu (a tela mostra)
         self.atividade = "ocioso"                # ocioso | explorando | pausado (a interface mostra)
@@ -172,17 +188,35 @@ class Kernel:
         if not texto:
             return
         agora = self._relogio()
+        ausencia = agora - self.ultima_fala      # há quanto tempo você não falava
         self.ultima_fala = agora
+        self._perguntas_no_vazio = 0
         self._folego = 0  # você falou: ele larga a exploração e presta atenção
         self._largar = True
         if self.atividade == "explorando":
             self.atividade, self.detalhe = "ocioso", ""
         self.dizer(texto, autor="voce")
+        voltou = ausencia >= timedelta(minutes=self.cfg.mente.minutos_de_presenca)
+        # O resumo da ausência é fechado antes de tratar a mensagem: o que você pedir agora não entra nele.
+        novidades = self._fechar_relato(agora) if voltou else ""
         try:
             if not self._reflexo(texto, agora):
                 para_a_internet = reflexos.internet(texto)
-                if para_a_internet:
+                para_o_cerebro = dialogo.para_o_cerebro(texto)
+                aprendeu_sobre = dialogo.aprendeu_sobre(texto)
+                if para_o_cerebro:
+                    await self._usar_cerebro(para_o_cerebro)
+                elif aprendeu_sobre:
+                    self._o_que_sei_sobre(aprendeu_sobre)
+                elif para_a_internet:
                     await self._tratar_internet(*para_a_internet)
+                elif dialogo.pede_mais(texto) is not None:
+                    # "fale mais", "e o que mais?": continuar o assunto não depende do classificador acertar
+                    self.registro.anotar("intencao", texto=texto, intencao="mais", confianca=1.0)
+                    if sobre_si.e_sobre_voce(texto) and sobre_si.topico(texto):
+                        self.dizer(sobre_si.responder(self, texto))      # "fale mais das suas funções"
+                    else:
+                        await self._falar_mais(*dialogo.pede_mais(texto))
                 else:
                     await self._entender(texto, agora)
         except (ErroFerramenta, ErroSeguranca) as erro:
@@ -192,6 +226,9 @@ class Kernel:
             # você mandaria de novo e a mesma fala ficaria duas vezes na conversa.
             self.registro.anotar("erro", onde="receber", erro=f"{type(erro).__name__}: {erro}")
             self.dizer("Tive um erro interno ao tratar isso. Anotei no registro.", classe="aviso")
+        if novidades:
+            # Você voltou. Em vez de falar sozinho enquanto você não estava, ele conta agora, de uma vez.
+            self.dizer(f"Enquanto você esteve fora ({_duracao(ausencia)}), {novidades}", classe="iniciativa")
         self._salvar_estado()
 
     def _reflexo(self, texto: str, agora: datetime) -> bool:
@@ -217,6 +254,19 @@ class Kernel:
 
     async def _entender(self, texto: str, agora: datetime) -> None:
         intencao, confianca = self.classificador.classificar(texto)
+        if intencao == "conversa":
+            # O classificador não reconheceu a frase. Antes de tratá-la como conversa (e só guardar),
+            # as regras de diálogo olham se ela é sobre ele, um "fale mais", um pedido ou uma pergunta.
+            if self.pergunta_aberta and dialogo.parece_resposta(texto, self.pergunta_aberta["termo"]):
+                pass   # você está respondendo ao que ele perguntou
+            elif sobre_si.e_sobre_voce(texto) and sobre_si.topico(texto):
+                intencao = "sobre_si"
+            elif dialogo.pede_mais(texto) is not None:
+                intencao = "mais"
+            elif dialogo.explorar_agora(texto):
+                intencao = "explorar"
+            elif dialogo.eh_pergunta(texto):
+                intencao = "pergunta"
         self.registro.anotar("intencao", texto=texto, intencao=intencao, confianca=round(confianca, 3))
         if intencao == "abrir_programa":
             self._propor("abrir_programa", {"programa": extrair.programa(texto)})
@@ -228,7 +278,7 @@ class Kernel:
         elif intencao == "consultar_memoria":
             self._consultar(texto)
         elif intencao == "sobre_si":
-            self.dizer(self.apresentacao())
+            self.dizer(sobre_si.responder(self, texto))
         elif intencao == "pergunta":
             await self._responder_pergunta(texto)
         elif intencao == "procurar_arquivo":
@@ -237,6 +287,10 @@ class Kernel:
             self.dizer(sistema.descrever())
         elif intencao == "descobertas":
             self.dizer(self._relato())
+        elif intencao == "mais":
+            await self._falar_mais(*dialogo.pede_mais(texto))
+        elif intencao == "explorar":
+            self._explorar_agora()
         else:
             await self._conversar(texto)
 
@@ -308,26 +362,67 @@ class Kernel:
             return f"• {trecho}  (da internet: {_site(lembranca.origem)}, {data})"
         return f"• {lembranca.texto}  ({data}, {lembranca.tipo})"
 
+    def _por_em_pauta(self, titulo: str, texto: str, dito: str, fonte: str, link: str | None, classe: str) -> None:
+        """Guarda o assunto da resposta que acabou de dar: é dele que sai o "fale mais"."""
+        todas = frases(texto)
+        self._em_pauta = {"titulo": titulo, "frases": todas, "ditas": {f for f in todas if f in dito},
+                          "fonte": fonte, "link": link, "classe": classe}
+
+    async def _falar_mais(self, quantas: int, assunto: str) -> None:
+        """ "Fale mais": continua o assunto da última resposta (ou começa o assunto pedido)."""
+        if assunto:
+            await self._responder_pergunta(f"sobre {assunto}")
+            return
+        pauta = self._em_pauta
+        if not pauta:
+            self.dizer('Mais sobre o quê? Faça uma pergunta ("o que é...") ou peça "pesquisa sobre...".')
+            return
+        novas = [f for f in pauta["frases"] if f not in pauta["ditas"]][:quantas]
+        if not novas:
+            dica = f' Posso procurar mais: diga "pesquisa sobre {pauta["titulo"]}".' if self.cfg.internet.ligada else ""
+            self.dizer(f'É tudo o que eu tenho sobre {pauta["titulo"]}.{dica}')
+            return
+        pauta["ditas"].update(novas)
+        extra = {"link": pauta["link"]} if pauta["link"] else {}
+        self.dizer(" ".join(novas), classe=pauta["classe"], fonte=pauta["fonte"], **extra)
+
     async def _responder_pergunta(self, texto: str) -> None:
         achado = self.enciclopedia.responder(texto)
         if achado:
             titulo, resposta = achado
+            artigos = self.enciclopedia.procurar(texto, k=1)
+            self._por_em_pauta(titulo, artigos[0].texto if artigos else resposta, resposta, f"Wikipédia: {titulo}",
+                               None, "conhecimento")
             self.dizer(resposta, classe="conhecimento", fonte=f"Wikipédia: {titulo}")
             return
         assunto = assunto_da_pergunta(texto)
-        if assunto and not self._sem_internet():
+        vale_pesquisar = any(len(termo) >= 3 for termo in termos(assunto))   # "tudo bem?" não é assunto de pesquisa
+        if assunto and vale_pesquisar and not self._sem_internet():
             # O que você mesmo me ensinou vale mais do que a internet; depois, o que já pesquisei; por fim, pesquiso agora.
             ensinado = [l for l in self.memoria.buscar(assunto, k=3, tipos=("fato", "lembrete")) if l.em_comum >= 1]
             if ensinado:
                 self.dizer("Você me contou isto:\n" + "\n".join(self._citar(l) for l in ensinado), classe="lembranca")
+                return
+            estudado = self.pesquisador.resumo_de(assunto)
+            if estudado:   # já estudou este assunto: responde do que aprendeu, sem voltar à rede
+                mostrar, aprendido, enderecos = estudado
+                self._ultima_fonte = enderecos[0] if enderecos else ""
+                fonte = "já pesquisei: " + ", ".join(dict.fromkeys(_site(e) for e in enderecos))
+                resposta = resumo(aprendido, assunto)
+                trechos = self.memoria.buscar(mostrar, k=6, tipos=("pesquisa",))
+                self._por_em_pauta(mostrar, aprendido + "\n" + "\n".join(l.texto.split(": ", 1)[-1] for l in trechos),
+                                   resposta, fonte, self._ultima_fonte or None, "pesquisa")
+                extra = {"link": self._ultima_fonte} if self._ultima_fonte else {}
+                self.dizer(resposta, classe="pesquisa", fonte=fonte, **extra)
                 return
             precisa = min(2, len(set(termos(assunto))))
             sabido = next((l for l in self.memoria.buscar(assunto, k=3, tipos=("pesquisa",)) if l.em_comum >= precisa), None)
             if sabido:
                 self._ultima_fonte = sabido.origem
                 corpo = sabido.texto.split(": ", 1)[-1]
-                self.dizer(resumo(corpo, assunto), classe="pesquisa", fonte=f"já pesquisei: {_site(sabido.origem)}",
-                           link=sabido.origem)
+                resposta = resumo(corpo, assunto)
+                self._por_em_pauta(assunto, corpo, resposta, f"já pesquisei: {_site(sabido.origem)}", sabido.origem, "pesquisa")
+                self.dizer(resposta, classe="pesquisa", fonte=f"já pesquisei: {_site(sabido.origem)}", link=sabido.origem)
                 return
             await self._pesquisar_agora(_como_voce_escreveu(texto, assunto), origem="pergunta")
             return
@@ -340,6 +435,46 @@ class Kernel:
                        "eu baixo, leio e passo a responder.")
         else:
             self.dizer("Não achei isso no que eu estudei.")
+
+    def _o_que_sei_sobre(self, assunto: str) -> None:
+        """ "O que você aprendeu sobre X?": o resumo do que ele estudou na internet, ou o que há na memória."""
+        achado = self.pesquisador.resumo_de(assunto)
+        if not achado:
+            self._consultar(f"o que você sabe sobre {assunto}")
+            return
+        mostrar, aprendido, enderecos = achado
+        trechos = self.memoria.buscar(mostrar, k=6, tipos=("pesquisa",))
+        texto = aprendido + "\n" + "\n".join(l.texto.split(": ", 1)[-1] for l in trechos)
+        fonte = "li em " + ", ".join(dict.fromkeys(_site(e) for e in enderecos)) if enderecos else "da internet"
+        self._ultima_fonte = enderecos[0] if enderecos else self._ultima_fonte
+        self._por_em_pauta(mostrar, texto, aprendido, fonte, enderecos[0] if enderecos else None, "pesquisa")
+        extra = {"link": enderecos[0]} if enderecos else {}
+        self.dizer(f"Sobre {mostrar}, aprendi isto: {aprendido}", classe="pesquisa", fonte=fonte, **extra)
+
+    async def _usar_cerebro(self, comeco: str) -> None:
+        """ "Completa: ...": mostra o que o cérebro treinado escreve a partir de um começo."""
+        if not self.cerebro:
+            self.dizer('Meu cérebro ainda não foi treinado. Depois de "estuda a wikipédia", diga "treina o cérebro por 6 horas".')
+            return
+        c = self.cfg.cerebro
+        laco = asyncio.get_running_loop()
+        escrito = await laco.run_in_executor(None, lambda: self.cerebro.responder(comeco, c.max_tokens, c.temperatura, c.top_k))
+        self.dizer(f"{comeco} {escrito}".strip(), classe="cerebro")
+
+    def _explorar_agora(self) -> None:
+        """ "Explore o computador": não espera a curiosidade subir; diz até onde pode ir e sai."""
+        if self.seguranca.pausado:
+            self.dizer('Estou parado a seu pedido. Diga "pode continuar" e eu volto a explorar.')
+            return
+        if not self.cfg.exploracao.ligada or self.seguranca.modo_seguro:
+            self.dizer("A exploração está desligada na configuração (kernel.toml, seção [exploracao]).")
+            return
+        self._explorar_ja = True
+        self.impulsos.valores["curiosidade"] = 1.0
+        n = self.mapa.numeros()
+        pastas = ", ".join(str(pasta) for pasta in self.cfg.pastas_permitidas())
+        self.dizer(f"Vou dar uma volta agora. Posso olhar: {pastas}. Até aqui olhei {n['pastas_visitadas']} de "
+                   f"{n['pastas']} pastas e li {n['arquivos_lidos']} arquivos. Para liberar ou tirar pastas, edite o kernel.toml.")
 
     # ================================================================ internet
     def _sem_internet(self) -> str:
@@ -385,6 +520,8 @@ class Kernel:
             return
         principal = resultado.fontes[0]
         self._ultima_fonte = principal.url
+        self._por_em_pauta(principal.titulo, resultado.texto or resultado.resposta, resultado.resposta,
+                           principal.site, principal.url, "pesquisa")
         sites = ", ".join(dict.fromkeys(f.site for f in resultado.fontes))
         quantas = len(resultado.fontes)
         rodape = (f"Li {quantas} {'página' if quantas == 1 else 'páginas'} ({sites}) e guardei "
@@ -453,10 +590,10 @@ class Kernel:
                        f"e vi {n['arquivos']} arquivos.")
 
     async def _conversar(self, texto: str) -> None:
-        if self.pergunta_aberta:  # você está respondendo a uma pergunta que ele fez
-            termo = self.pergunta_aberta["termo"]
+        if self.pergunta_aberta and dialogo.parece_resposta(texto, self.pergunta_aberta["termo"]):
+            termo = self.pergunta_aberta["termo"]   # você está respondendo a uma pergunta que ele fez
             self.pergunta_aberta = None
-            if normalizar(texto).strip(" .!") in _DESISTENCIAS:
+            if normalizar(texto).strip(" .!") in dialogo.DESISTENCIAS:
                 self.dizer("Tudo bem, deixa pra lá.")
                 return
             self._guardar(f"Sobre {termo}: {texto}", tipo="fato")
@@ -469,7 +606,7 @@ class Kernel:
         if lembrancas:
             self.dizer("Isso me lembra:\n" + "\n".join(self._citar(l) for l in lembrancas), classe="lembranca")
 
-        if self.cerebro:
+        if self.cerebro and self.cfg.cerebro.na_conversa:
             c = self.cfg.cerebro
             laco = asyncio.get_running_loop()
             resposta = await laco.run_in_executor(
@@ -477,9 +614,11 @@ class Kernel:
             self.dizer(resposta or "...", classe="cerebro")
         elif not self._ja_explicou_cerebro:
             self._ja_explicou_cerebro = True
-            self.dizer("Guardei na memória. Ainda não converso de verdade: meu cérebro não foi treinado. "
-                       "Mas respondo perguntas do que estudei, faço contas, acho arquivos, abro programas "
-                       "e anoto lembretes.")
+            porque = ("meu cérebro é pequeno e completa texto, não dialoga" if self.cerebro
+                      else "meu cérebro não foi treinado")
+            self.dizer(f"Guardei na memória. Ainda não converso de verdade: {porque}. Mas respondo perguntas, pesquiso, "
+                       "faço contas, acho arquivos, abro programas e anoto lembretes. "
+                       'Para ver tudo, pergunte "o que você sabe fazer?".')
         elif not lembrancas:
             self.dizer(_CONFIRMACOES[id_memoria % len(_CONFIRMACOES)])
 
@@ -545,6 +684,7 @@ class Kernel:
         self._laco_principal = asyncio.get_running_loop()
         self.registro.anotar("servico", evento="inicio", versao=VERSAO)
         self._ligar_ouvidos()
+        self._retomar_treino()
         intervalo = self.cfg.nucleo.intervalo_laco
         while not self._parar.is_set():
             try:
@@ -627,15 +767,21 @@ class Kernel:
         return "nada"
 
     # ------------------------------------------------------------- curiosidade
+    def _presente(self, agora: datetime) -> bool:
+        """Você está por perto? (Falou com ele há pouco.) Sem você, ele trabalha calado."""
+        return agora - self.ultima_fala <= timedelta(minutes=self.cfg.mente.minutos_de_presenca)
+
     def _agir_por_curiosidade(self, agora: datetime, segundos_ocioso: float) -> tuple[str, str]:
-        if segundos_ocioso >= _SOSSEGO_PARA_EXPLORAR:
+        sossegado = segundos_ocioso >= _SOSSEGO_PARA_EXPLORAR or self._explorar_ja
+        if sossegado and not self._explorar_ja:
             # Alterna: um fôlego de exploração do PC, um assunto pesquisado na internet.
             self._vez_da_internet = not self._vez_da_internet
             if self._vez_da_internet or not self.cfg.exploracao.ligada:
                 feito = self._pesquisar_sozinho()
                 if feito:
                     return feito
-        if self.cfg.exploracao.ligada and segundos_ocioso >= _SOSSEGO_PARA_EXPLORAR:
+        if self.cfg.exploracao.ligada and sossegado:
+            self._explorar_ja = False
             self._folego = _VOLTAS_POR_FOLEGO
             self._do_folego = {"pastas": 0, "arquivos": 0, "lidos": 0}
             if self._explorar(agora) == "explorar":
@@ -693,6 +839,12 @@ class Kernel:
             if agora - self.pergunta_aberta["desde"] < timedelta(minutes=_MINUTOS_DE_ESPERA_DA_PERGUNTA):
                 return "nada", ""  # ainda esperando a sua resposta
             self.pergunta_aberta = None
+            self._perguntas_no_vazio += 1
+        if not self._presente(agora) or self._perguntas_no_vazio >= 2:
+            # Você não está por perto (ou deixou duas perguntas sem resposta): ele não fica falando sozinho.
+            if self._folego == 0 and not self.cfg.exploracao.ligada:
+                self.impulsos.satisfazer("curiosidade", 0.3)
+            return "nada", ""
         espera = timedelta(minutes=self.cfg.mente.minutos_entre_perguntas)
         if self.ultima_pergunta and agora - self.ultima_pergunta < espera:
             return "nada", ""
@@ -740,27 +892,77 @@ class Kernel:
 
     # ------------------------------------------------------------------ social
     def _relato(self) -> str:
-        if not self.cfg.exploracao.ligada:
+        """O que ele descobriu no PC e aprendeu na internet, quando você pergunta."""
+        if not self.cfg.exploracao.ligada and not self.cfg.internet.ligada:
             return "A exploração está desligada na configuração (kernel.toml, seção [exploracao])."
-        prefixo = "Estou parado a seu pedido. " if self.seguranca.pausado else ""
-        return prefixo + self.explorador.relato()
+        partes = ["Estou parado a seu pedido."] if self.seguranca.pausado else []
+        if self.cfg.exploracao.ligada:
+            partes.append(self.explorador.relato())
+        if self.cfg.internet.ligada:
+            partes.append(self.pesquisador.relato())
+        fala = " ".join(partes)
+        aprendidos = self.pesquisador.aprendidos(n=3) if self.cfg.internet.ligada else []
+        if aprendidos:
+            fala += "\nO que aprendi por último:\n" + "\n".join(
+                f"• {assunto}: {(frases(aprendido) or [aprendido])[0]}" for assunto, aprendido in aprendidos)
+        return fala
 
-    def _contar_novidades(self, agora: datetime) -> tuple[str, str]:
-        espera = timedelta(minutes=self.cfg.mente.minutos_entre_relatos)
-        if self.ultimo_relato and agora - self.ultimo_relato < espera:
-            return "nada", ""
+    def _resumo_desde(self, desde: str) -> str:
+        """O que ele fez a partir de um instante, numa frase: arquivos seus lidos e assuntos estudados."""
+        partes = []
+        lidos, nomes = self.mapa.lidos_desde(desde)
+        if lidos:
+            exemplos = ", ".join(nomes) + (" e outros" if lidos > len(nomes) else "")
+            partes.append(f"li {lidos} {'arquivo seu' if lidos == 1 else 'arquivos seus'} ({exemplos})")
+        estudados = self.pesquisador.quantos_desde(desde, so_sozinho=True)
+        if estudados:
+            nomes = self.pesquisador.feitos_desde(desde, 5, so_sozinho=True)
+            exemplos = ", ".join(nomes) + (" e outros" if estudados > len(nomes) else "")
+            partes.append(f"estudei {estudados} {'assunto' if estudados == 1 else 'assuntos'} na internet ({exemplos})")
+        return " e ".join(partes) + "." if partes else ""
+
+    def _fechar_relato(self, agora: datetime) -> str:
+        """O que ele fez por conta própria desde o último relato (texto vazio se nada), e zera a contagem."""
+        feito = self._resumo_desde(self._contei_em)
+        self._contei_em = agora.isoformat(timespec="seconds")
         self.ultimo_relato = agora
         self.novidades = 0
         self.impulsos.satisfazer("social")
-        relato = "Andei explorando. " + self.explorador.relato()
-        pesquisados = self.pesquisador.feitos_desde(self._contou_a_internet_em)
-        if pesquisados:
-            relato += " Na internet, pesquisei sobre " + ", ".join(pesquisados) + "."
-        self._contou_a_internet_em = agora.isoformat(timespec="seconds")
-        self.dizer(relato, classe="iniciativa")
-        return "contar", "Contei o que descobri explorando."
+        if feito and self.cfg.internet.ligada and self.pesquisador.quantos_desde(None):
+            feito += ' Para saber mais, pergunte "o que você aprendeu?".'
+        return feito
+
+    def _contar_o_que_fiz(self, agora: datetime) -> bool:
+        """Conta, numa fala só, o que fez desde o último relato. Devolve False se não havia o que contar."""
+        feito = self._fechar_relato(agora)
+        if feito:
+            self.dizer("Novidades: " + feito, classe="iniciativa")
+        return bool(feito)
+
+    def _contar_novidades(self, agora: datetime) -> tuple[str, str]:
+        if not self._presente(agora):
+            return "nada", ""   # você não está: as novidades ficam guardadas para quando voltar
+        espera = timedelta(minutes=self.cfg.mente.minutos_entre_relatos)
+        if self.ultimo_relato and agora - self.ultimo_relato < espera:
+            return "nada", ""
+        if self._contar_o_que_fiz(agora):
+            return "contar", "Contei o que fiz desde o último relato."
+        return "nada", ""
 
     # ================================================================== estudo
+    def _retomar_treino(self) -> None:
+        """Um treino que você aprovou e o reinício do serviço interrompeu continua pelo tempo que faltava."""
+        horas = self.estudo.treino_pendente()
+        if horas < 0.1 or self.seguranca.modo_seguro or self.estudo.ocupado:
+            return
+        try:
+            self.estudo.treinar_cerebro(horas)
+        except ErroFerramenta:
+            return
+        quanto = f"{round(horas * 60)} minutos" if horas < 1 else f"{horas:.1f} horas".replace(".", ",")
+        self.dizer(f'Retomei o treino do cérebro que o reinício interrompeu: faltavam {quanto}. Para parar, diga "para o treino".',
+                   classe="iniciativa")
+
     def _estudo_terminou(self, trabalho: str, mensagem: str) -> None:
         """Chamado pela thread do estudo; a notícia volta para o laço principal."""
         def avisar():
@@ -830,6 +1032,7 @@ class Kernel:
             "memoria": self.memoria.contar(),
             "cerebro": cerebro,
             "conhecimento": len(self.enciclopedia),
+            "presente": self._presente(self._relogio()),
             "ouvidos": ouvidos,
             "exploracao": {
                 "ligada": self.cfg.exploracao.ligada,
@@ -872,7 +1075,7 @@ class Kernel:
         (self.cfg.dados / "DESLIGAR").unlink(missing_ok=True)
         self.registro.anotar("servico", evento="desligar", motivo=motivo)
         self._salvar_estado()
-        self.estudo.parar()
+        self.estudo.parar(manter=True)   # um treino em curso fica pendente: a próxima partida retoma
         if self.ouvidos:
             self.ouvidos.parar()
             self.ouvidos = None

@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS arquivos (
     assunto    TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS arquivos_estado ON arquivos (estado, extensao);
+CREATE TABLE IF NOT EXISTS anotacoes (
+    chave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS nomes (
     termo      TEXT PRIMARY KEY,
     palavra    TEXT NOT NULL,
@@ -146,18 +150,44 @@ class Mapa:
         return "mudou" if antes else "novo"
 
     def proximo_arquivo(self, extensoes: set[str], tamanho_maximo: int) -> Path | None:
-        """Um arquivo legível que ele viu e ainda não leu (os menores primeiro)."""
+        """Um arquivo legível que ele viu e ainda não leu. Os mexidos por último primeiro:
+        é mais provável que sejam os que importam para você agora."""
         marcas = ",".join("?" * len(extensoes))
         with self._trava:
             linha = self._bd.execute(
                 f"SELECT caminho FROM arquivos WHERE estado = 'novo' AND extensao IN ({marcas}) "
-                "AND tamanho <= ? ORDER BY tamanho LIMIT 1", (*extensoes, tamanho_maximo)).fetchone()
+                "AND tamanho <= ? ORDER BY modificado DESC, caminho LIMIT 1", (*extensoes, tamanho_maximo)).fetchone()
         return Path(linha[0]) if linha else None
 
-    def marcar(self, caminho: Path, estado: str, assunto: str = "") -> None:
+    # ------------------------------------------------------------------ faxina
+    def regras_mudaram(self, versao: int) -> bool:
+        """As regras de leitura são outras desde a última vez? (Anota a versão nova.)"""
         with self._gravando():
-            self._bd.execute("UPDATE arquivos SET estado = ?, assunto = ? WHERE caminho = ?",
-                             (estado, assunto, str(caminho)))
+            antes = self._bd.execute("SELECT valor FROM anotacoes WHERE chave = 'regras_de_leitura'").fetchone()
+            self._bd.execute("INSERT OR REPLACE INTO anotacoes (chave, valor) VALUES ('regras_de_leitura', ?)", (str(versao),))
+        return antes is None or antes[0] != str(versao)
+
+    def reler_tudo(self) -> int:
+        """Marca todos os arquivos como não lidos e esquece os nomes anotados (as regras de leitura mudaram)."""
+        with self._gravando():
+            quantos = self._bd.execute("UPDATE arquivos SET estado = 'novo', assunto = '' WHERE estado != 'novo'").rowcount
+            self._bd.execute("DELETE FROM nomes")
+        return quantos
+
+    def esquecer(self, fora) -> tuple[int, list[str]]:
+        """Tira do mapa as pastas e os arquivos para os quais ``fora(caminho)`` é verdadeiro.
+        Devolve (pastas tiradas, arquivos tirados que já tinham sido lidos)."""
+        with self._gravando():
+            pastas = [(c,) for (c,) in self._bd.execute("SELECT caminho FROM pastas") if fora(c)]
+            arquivos = [(c, estado) for c, estado in self._bd.execute("SELECT caminho, estado FROM arquivos") if fora(c)]
+            self._bd.executemany("DELETE FROM pastas WHERE caminho = ?", pastas)
+            self._bd.executemany("DELETE FROM arquivos WHERE caminho = ?", [(c,) for c, _ in arquivos])
+        return len(pastas), [c for c, estado in arquivos if estado == "lido"]
+
+    def marcar(self, caminho: Path, estado: str, assunto: str = "") -> None:
+        with self._gravando():   # ``visto_em`` passa a ser a hora em que ele leu (ou desistiu de ler)
+            self._bd.execute("UPDATE arquivos SET estado = ?, assunto = ?, visto_em = ? WHERE caminho = ?",
+                             (estado, assunto, self._agora(), str(caminho)))
 
     def procurar(self, texto: str, k: int = 8) -> list[dict]:
         """Arquivos cujo nome (ou assunto) contém as palavras pedidas; os que acertam mais vêm antes."""
@@ -191,11 +221,13 @@ class Mapa:
                     (termo, palavra, proprias, comuns, 1 if proprias else 0, arquivo))
 
     def nome_curioso(self, ignorar: set[str], minimo_de_arquivos: int = 3) -> tuple[str, str, int, str] | None:
-        """Um nome próprio que aparece em vários arquivos: (termo, palavra, em quantos, exemplo)."""
+        """Um nome próprio que aparece em vários arquivos: (termo, palavra, em quantos, exemplo).
+        Nomes de duas palavras ou mais ("Padaria Estrela") vêm antes: é mais certo que sejam nomes."""
         with self._trava:
             linhas = self._bd.execute(
                 "SELECT termo, palavra, arquivos, exemplo FROM nomes "
-                "WHERE arquivos >= ? AND proprias >= 4 * comuns ORDER BY arquivos DESC LIMIT 50",
+                "WHERE arquivos >= ? AND proprias >= 4 * comuns AND LENGTH(palavra) >= 4 "
+                "ORDER BY (palavra LIKE '% %') DESC, arquivos DESC LIMIT 50",
                 (minimo_de_arquivos,)).fetchall()
         for termo, palavra, arquivos, exemplo in linhas:
             if termo not in ignorar:
@@ -213,6 +245,16 @@ class Mapa:
                 "SELECT extensao, COUNT(*) FROM arquivos GROUP BY extensao ORDER BY COUNT(*) DESC LIMIT 6").fetchall()
         return {"pastas": pastas, "pastas_visitadas": visitadas, "arquivos": arquivos, "arquivos_lidos": lidos,
                 "tipos": [[extensao or "(sem extensão)", n] for extensao, n in tipos]}
+
+    def lidos_desde(self, desde: str, n: int = 4) -> tuple[int, list[str]]:
+        """Quantos arquivos ele leu a partir de um instante, e o nome de alguns (os mais recentes)."""
+        with self._trava:
+            quantos = self._bd.execute(
+                "SELECT COUNT(*) FROM arquivos WHERE estado = 'lido' AND visto_em >= ?", (desde,)).fetchone()[0]
+            nomes = self._bd.execute(
+                "SELECT nome FROM arquivos WHERE estado = 'lido' AND visto_em >= ? ORDER BY visto_em DESC LIMIT ?",
+                (desde, n)).fetchall()
+        return quantos, [nome for (nome,) in nomes]
 
     def assuntos(self, n: int = 8) -> list[str]:
         """Os assuntos que mais se repetem nos arquivos lidos."""

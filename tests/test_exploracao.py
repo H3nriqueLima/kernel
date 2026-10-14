@@ -1,6 +1,7 @@
 """A exploração autônoma: o que ele olha, o que ele nunca olha, e como você manda parar."""
 import asyncio
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -229,8 +230,8 @@ def test_conta_o_que_descobriu_e_pergunta_por_um_nome(explorando, relogio, pasta
     explorando.novidades = 40
     relogio.avancar(minutes=5)
     explorando.volta(5)
-    assert any(t.startswith("Andei explorando.") for t in
-               [m["texto"] for m in explorando.mensagens if m["classe"] == "iniciativa"])
+    novidades = [m["texto"] for m in explorando.mensagens if m["classe"] == "iniciativa" and m["texto"].startswith("Novidades: ")]
+    assert novidades and "arquivos seus" in novidades[-1] and "recibo" in novidades[-1]
     assert explorando.novidades == 0
 
 
@@ -239,7 +240,7 @@ def test_perguntas_sobre_arquivos_e_descobertas(explorando):
     dizer(explorando, "onde está o arquivo do contrato")
     assert "contrato padaria.txt" in falas(explorando)[-1] and "clientes" in falas(explorando)[-1]
     dizer(explorando, "o que você descobriu")
-    assert "Já visitei" in falas(explorando)[-1] and "Li 2 deles" in falas(explorando)[-1]
+    assert "Já olhei" in falas(explorando)[-1] and "li 2 deles" in falas(explorando)[-1]
     dizer(explorando, "o que você lembra sobre a padaria")
     assert "Padaria Estrela" in falas(explorando)[-1] and "li em clientes" in falas(explorando)[-1]
     dizer(explorando, "cadê o arquivo de impostos")
@@ -309,3 +310,117 @@ def test_mapa_grava_em_lote_sem_perder_nada(tmp_path):
     outro = Mapa(tmp_path / "mapa.db")                                 # está tudo em disco
     assert outro.numeros()["arquivos"] == 1000
     outro.fechar()
+
+
+# ------------------------------------------------------- explorar com critério
+def test_o_que_fica_fora_do_alcance_mesmo_com_o_disco_inteiro_liberado(cfg):
+    """Liberar C:\\ não é pedir para ele ler o Windows: sistema, programas, montagem e configuração ficam de fora."""
+    from pathlib import Path
+
+    from kernel.registro import Registro
+    from kernel.seguranca import Seguranca
+
+    seguranca = Seguranca(cfg, Registro(cfg.pasta("registro")))
+    disco = Path("C:/")
+    fora = lambda caminho, raiz=disco: seguranca.fora_de_alcance(Path(caminho), raiz)   # noqa: E731
+    assert fora("C:/Windows/System32/drivers") == "sistema" and fora("C:/Program Files/7-Zip/License.txt") == "sistema"
+    assert fora("C:/Program Files (x86)/Steam") == "sistema" and fora("C:/ProgramData/x") == "sistema"
+    assert fora("C:/Arquivos de Programas RFB/irpf.txt") == "sistema" and fora("C:/AMD/driver") == "sistema"
+    assert fora("C:/Users/voce/.claude/projects/notas.md") == "oculto" and fora("C:/Users/voce/.aws/config") == "oculto"
+    assert fora("C:/Users/voce/Projetos/app/obj/lista.txt") == "montagem"
+    assert fora("C:/Users/voce/Projetos/app/node_modules/x/readme.md") == "nunca"       # este já era da lista de fábrica
+    assert fora("C:/Users/voce/Documentos/senhas do banco.txt") == "nunca"
+    for seu in ("C:/Users/voce/Documentos/contrato.docx", "C:/Contabil/2026/balanço.xlsx", "C:/Users/voce/Windows 11 dicas.txt",
+                "C:/Users/voce/Projetos/app/src/main.py"):
+        assert fora(seu) is None, seu
+    # a pasta que você liberou pelo nome é sua escolha: as regras valem para o que está abaixo dela
+    assert fora("C:/Program Files/MeuApp/manual.pdf", Path("C:/Program Files/MeuApp")) is None
+    assert fora("D:/Windows/notas.txt", Path("D:/")) == "sistema" and fora("D:/Fotos/Windows/a.txt", Path("D:/")) is None
+
+    cfg.exploracao.pastas_de_sistema = cfg.exploracao.ocultos = True     # e tudo isso você pode religar
+    assert fora("C:/Windows/System32") is None and fora("C:/Users/voce/.claude/x.md") is None
+    assert fora("C:/Users/voce/app/obj/lista.txt") is None and fora("C:/Users/voce/senhas.txt") == "nunca"
+
+
+def test_pula_montagem_e_oculto_e_so_le_o_que_e_leitura(explorando, pasta):
+    (pasta / ".config").mkdir()
+    (pasta / ".config" / "chave de acesso.txt").write_text("um arquivo de configuração com uma chave dentro dele", encoding="utf-8")
+    (pasta / "app" / "obj").mkdir(parents=True)
+    (pasta / "app" / "obj" / "lista.txt").write_text("C:\\a\\b.dll\n" * 30, encoding="utf-8")
+    (pasta / "app" / "principal.py").write_text("def somar(a, b):\n    return a + b  # função de exemplo\n" * 5, encoding="utf-8")
+    (pasta / "app" / "LICENSE.txt").write_text("Permission is hereby granted, free of charge, to any person " * 5, encoding="utf-8")
+    (pasta / "app" / "description-sk.txt").write_text("Toto je popis programu v slovenčine, ktorý nikto nečíta. " * 4, encoding="utf-8")
+    (pasta / "app" / "caminhos.txt").write_text("\n".join(f"C:\\Windows\\System32\\arquivo{i}.dll" for i in range(40)), encoding="utf-8")
+    (pasta / "app" / "leia-me.txt").write_text("Este programa organiza as notas fiscais do escritório e gera o relatório do mês.", encoding="utf-8")
+    feitos = explorar_tudo(explorando)
+    vistos = {arquivo["nome"] for arquivo in explorando.mapa.procurar("txt py lista principal")}
+    assert "lista.txt" not in vistos and "chave de acesso.txt" not in vistos       # nem entram no mapa
+    assert "principal.py" in vistos                                                # código entra no mapa pelo nome...
+    lidos = {Path(f["arquivo"]).name for f in feitos if f["acao"] == "ler"}
+    assert "leia-me.txt" in lidos and "contrato padaria.txt" in lidos
+    assert not lidos & {"principal.py", "LICENSE.txt", "description-sk.txt", "caminhos.txt"}   # ...mas não é lido
+    assert explorando.memoria.buscar("notas fiscais relatório", k=1)[0].origem.endswith("leia-me.txt")
+    assert explorando.memoria.buscar("slovenčine popis", k=1) == [] and explorando.memoria.buscar("somar função", k=1) == []
+
+    explorando.cfg.exploracao.ler_codigo = True                                    # você liga, ele lê o código também
+    assert any(Path(f["arquivo"]).name == "principal.py" for f in explorar_tudo(explorando) if f["acao"] == "ler")
+
+
+def test_faxina_esquece_o_que_as_regras_novas_deixam_de_fora(cfg, relogio, pasta):
+    (pasta / ".config").mkdir()
+    (pasta / ".config" / "preferencias.txt").write_text("As preferências do programa ficam guardadas neste arquivo de texto.", encoding="utf-8")
+    cfg.exploracao.ligada = cfg.exploracao.ocultos = True                          # como era antes: lia até o que é oculto
+    antigo = Kernel(cfg, relogio=relogio)
+    explorar_tudo(antigo)
+    assert antigo.memoria.buscar("preferências programa", k=1) and antigo.mapa.numeros()["arquivos_lidos"] == 3
+    antigo.fechar()
+
+    cfg.exploracao.ocultos = False                                                 # as regras de hoje
+    novo = Kernel(cfg, relogio=relogio)
+    try:
+        assert novo.memoria.buscar("preferências programa", k=1) == []             # o que saiu do alcance foi esquecido
+        assert novo.mapa.procurar("preferencias") == [] and novo.mapa.numeros()["arquivos_lidos"] == 2
+        assert novo.memoria.buscar("contrato Padaria Estrela", k=1)                # e o que continua ao alcance ficou
+        faxina = [e for e in novo.registro.ultimos(40) if e["tipo"] == "explorar" and e.get("acao") == "faxina"][-1]
+        assert faxina["arquivos_lidos_esquecidos"] == 1 and faxina["leituras_apagadas"] >= 1
+
+        # quando as regras de leitura do programa mudam de versão, ele esquece as leituras e relê o que ficou ao alcance
+        novo.mapa._bd.execute("UPDATE anotacoes SET valor = '1' WHERE chave = 'regras_de_leitura'")
+        novo.mapa._bd.commit()
+        refeito = novo.explorador.faxina()
+        assert refeito["arquivos_para_reler"] >= 2 and novo.memoria.contar().get("leitura", 0) == 0
+        assert novo.mapa.numeros()["arquivos_lidos"] == 0
+        explorar_tudo(novo)
+        assert novo.mapa.numeros()["arquivos_lidos"] == 2 and novo.memoria.buscar("contrato Padaria Estrela", k=1)
+        assert novo.explorador.faxina() == {"pastas_esquecidas": 0, "arquivos_lidos_esquecidos": 0,
+                                            "leituras_apagadas": 0, "arquivos_para_reler": 0}
+    finally:
+        novo.fechar()
+
+
+def test_le_primeiro_o_que_foi_mexido_por_ultimo(tmp_path):
+    from kernel.exploracao import Mapa
+
+    mapa = Mapa(tmp_path / "mapa.db")
+    mapa.registrar_arquivo(tmp_path / "antigo.txt", 10, 1000.0)
+    mapa.registrar_arquivo(tmp_path / "recente.txt", 99999, 3000.0)
+    mapa.registrar_arquivo(tmp_path / "do meio.txt", 500, 2000.0)
+    ordem = []
+    while (proximo := mapa.proximo_arquivo({".txt"}, 10**9)) is not None:
+        ordem.append(proximo.name)
+        mapa.marcar(proximo, "lido")
+    assert ordem == ["recente.txt", "do meio.txt", "antigo.txt"]
+    assert mapa.lidos_desde("2000-01-01")[0] == 3 and mapa.lidos_desde("2999-01-01") == (0, [])
+    mapa.fechar()
+
+
+def test_o_que_e_prosa_e_o_que_e_enfeite():
+    assert leitores.parece_leitura("Recibo: pagamento recebido da Padaria Estrela no valor combinado.")
+    assert leitores.parece_leitura("This is the manual of the program and it explains how to use it.")
+    assert not leitores.parece_leitura("\n".join(f"C:\\Windows\\System32\\arquivo{i}.dll" for i in range(30)))
+    assert not leitores.parece_leitura("Toto je popis programu v slovenčine, ktorý nikto nečíta.")
+    assert not leitores.parece_leitura("ok") and not leitores.parece_leitura("x = 1; y = 2; z = x + y")
+    for nome in ("LICENSE.txt", "COPYING", "ThirdPartyNotices.txt", "CHANGELOG.md", "License-2.0.txt"):
+        assert leitores.de_enfeite(Path(nome)), nome
+    assert not leitores.de_enfeite(Path("licença do software da empresa.docx")) and not leitores.de_enfeite(Path("notas.txt"))
+    assert leitores.DOCUMENTOS & leitores.CODIGO == set() and ".py" in leitores.CODIGO and ".pdf" in leitores.DOCUMENTOS

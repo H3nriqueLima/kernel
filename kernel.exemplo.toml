@@ -24,6 +24,11 @@ ligada = true          # true = ele olha as pastas acima por conta própria. fal
 ler_arquivos = true    # true = lê o texto dos arquivos. false = só vê os nomes.
 ritmo = "normal"       # calmo | normal | intenso
 
+# Explorar com critério (os três vêm em false):
+pastas_de_sistema = false  # true = também olha o Windows, os programas instalados e pastas como obj, bin e node_modules
+ocultos = false            # true = também olha o que começa com ponto (.claude, .aws...): é configuração de programa
+ler_codigo = false         # true = lê também código e arquivos de configuração (false = só entram no mapa pelo nome)
+
 # Pedaços de nome que ele sempre pula, além dos de fábrica (senha, password, token,
 # .ssh, .env, appdata...). Exemplo: nunca = ["confidencial", "pessoal"]
 nunca = []
@@ -90,6 +95,9 @@ dispositivo = "auto"   # auto | directml | cuda | cpu
 tamanho = "mini"       # nano | mini | pequeno
 temperatura = 0.8
 max_tokens = 60
+# true = numa conversa, o cérebro acrescenta uma fala dele. Com o cérebro pequeno ela sai sem sentido.
+# Para vê-lo escrever a qualquer hora, diga no chat: completa: O Brasil é
+na_conversa = false
 
 [ouvidos]
 ativo = true
@@ -103,4 +111,7 @@ curiosidade_por_minuto = 0.04
 organizacao_por_memoria = 0.05
 minutos_entre_perguntas = 20
 minutos_entre_relatos = 30
+# Depois deste tempo sem você falar, ele entende que você saiu: continua trabalhando, mas calado.
+# Quando você volta, conta de uma vez o que fez.
+minutos_de_presenca = 15
 hora_do_diario = 23

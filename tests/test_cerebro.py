@@ -206,3 +206,67 @@ def test_taxa_sobe_no_aquecimento_e_desce_em_cosseno(torch):
     assert abs(taxa_no_passo(cfg, 100) - 1e-3) < 1e-9
     assert taxa_no_passo(cfg, 100) > taxa_no_passo(cfg, 500) > taxa_no_passo(cfg, 999)
     assert abs(taxa_no_passo(cfg, 5000) - 1e-4) < 1e-9  # nunca abaixo de 10%
+
+
+def test_gerar_um_pedaco_por_vez_da_a_mesma_conta(torch, tmp_path):
+    """A memória de chaves e valores é só um atalho: as notas têm de ser as mesmas da conta inteira."""
+    from kernel.cerebro.gpt import GPT, ConfigGPT
+
+    torch.manual_seed(1)
+    tok = tokenizador.treinar([TEXTO], tamanho=300)
+    modelo = GPT(ConfigGPT(vocab=tok.tamanho, contexto=24, camadas=2, cabecas=4, dim=48))
+    inferencia.exportar(modelo, tmp_path / inferencia.MODELO)
+    tok.salvar(tmp_path / inferencia.TOKENIZADOR)
+    cerebro = inferencia.carregar_de(tmp_path)
+
+    ids = tok.codificar("O Brasil é o maior país da América do Sul")[:20]
+    inteira = cerebro.logits(ids)
+    memoria = cerebro._memoria_nova()
+    for posicao, token in enumerate(ids):
+        assert np.abs(cerebro._avancar(token, posicao, memoria) - inteira[posicao]).max() < 1e-4
+
+    saida = cerebro.gerar(ids, 60, temperatura=1.0)                     # passa do tamanho da janela (24) sem quebrar
+    assert len(saida) > 24 and saida[:len(ids)] == ids
+
+    # com a trava de repetição, nenhum trio de pedaços sai igual duas vezes no que ele escreveu
+    cerebro._sorteio = np.random.default_rng(3)
+    escrito = cerebro.gerar(ids[:4], 40, temperatura=0.2, top_k=5, top_p=0.9, repeticao=1.3)[4:]
+    trios = [tuple(escrito[i:i + 3]) for i in range(len(escrito) - 2)]
+    assert len(trios) == len(set(trios))
+    assert cerebro.perda(ids) > 0 and "  " not in cerebro.responder("O Brasil", 20)
+
+
+def test_historico_e_avaliacao_do_treino(torch, tmp_path):
+    from kernel.cerebro import dados
+    from kernel.cerebro.treinar import ConfigTreino, taxa_na_sessao, treinar
+
+    assert inferencia.historico(tmp_path) is None
+    corpus = tmp_path / "corpus.txt"
+    corpus.write_text(TEXTO * 5, encoding="utf-8")
+    tok = tokenizador.treinar([TEXTO], tamanho=300)
+    tok.salvar(tmp_path / inferencia.TOKENIZADOR)
+    dados.preparar(corpus, tok, tmp_path)
+    cfg = ConfigTreino(tamanho="nano", passos=40, lote=8, taxa=3e-3, aquecimento=10, avaliar_cada=20,
+                       lotes_de_avaliacao=2, dispositivo="cpu")
+    treinar(tmp_path, cfg, avisar=lambda _: None)
+
+    historia = inferencia.historico(tmp_path)
+    assert historia["passos"] == 40 and historia["pontos"] == 2 and historia["melhor"] <= historia["primeira"]
+    assert historia["tokens"] >= 0 and historia["horas"] > 0            # (a velocidade só é medida a cada 50 passos)
+    medida = inferencia.avaliar(inferencia.carregar_de(tmp_path), tmp_path, janelas=2)
+    assert medida is None or (medida["perda"] > 0 and abs(medida["perplexidade"] - math.exp(medida["perda"])) < 1e-6)
+
+    # Uma sessão medida em horas continua de onde parou, mesmo com a meta antiga já batida.
+    avisos = []
+    sessao = ConfigTreino(tamanho="nano", horas=1.5 / 3600, lote=8, taxa=3e-3, aquecimento=5, avaliar_cada=20,
+                          lotes_de_avaliacao=2, dispositivo="cpu")
+    resumo = treinar(tmp_path, sessao, avisar=avisos.append)
+    assert resumo["passo"] > 40 and any("continuando do passo 40" in a for a in avisos)
+    assert not any("já foi atingida" in a for a in avisos)
+    assert inferencia.historico(tmp_path)["passos"] == resumo["passo"]
+
+    # a taxa da sessão: aquece, desce com o relógio e, ao continuar um treino, tem pico menor
+    assert taxa_na_sessao(sessao, 0, 0.0, False) < taxa_na_sessao(sessao, 4, 0.0, False)
+    assert abs(taxa_na_sessao(sessao, 5, 0.0, False) - 3e-3) < 1e-9
+    assert taxa_na_sessao(sessao, 100, 0.5, False) < 3e-3 and abs(taxa_na_sessao(sessao, 100, 1.0, False) - 3e-4) < 1e-9
+    assert abs(taxa_na_sessao(sessao, 100, 0.0, True) - 1.5e-3) < 1e-9

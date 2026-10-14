@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS indice (
     tf         INTEGER NOT NULL,
     PRIMARY KEY (termo, id_memoria)
 ) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS indice_da_memoria ON indice (id_memoria);   -- para apagar uma memória sem ler o índice todo
 CREATE INDEX IF NOT EXISTS memorias_tipo ON memorias (tipo, feito);
 CREATE INDEX IF NOT EXISTS memorias_origem ON memorias (tipo, origem);
 """
@@ -110,6 +111,24 @@ class Memoria:
             self._bd.executemany("DELETE FROM indice WHERE id_memoria = ?", [(i,) for i in ids])
             self._bd.executemany("DELETE FROM memorias WHERE id = ?", [(i,) for i in ids])
         return len(ids)
+
+    def apagar_origens(self, tipo: str, origens: list[str]) -> int:
+        """Apaga, numa transação só, tudo o que veio de várias origens (uma faxina de arquivos esquecidos)."""
+        apagadas = 0
+        with self._trava, self._bd:
+            for origem in origens:
+                ids = [(i,) for (i,) in self._bd.execute(
+                    "SELECT id FROM memorias WHERE tipo = ? AND origem = ?", (tipo, origem))]
+                self._bd.executemany("DELETE FROM indice WHERE id_memoria = ?", ids)
+                self._bd.executemany("DELETE FROM memorias WHERE id = ?", ids)
+                apagadas += len(ids)
+        return apagadas
+
+    def apagar_tipo(self, tipo: str) -> int:
+        """Apaga todas as memórias de um tipo (as leituras, quando as regras de leitura mudam)."""
+        with self._trava, self._bd:
+            self._bd.execute("DELETE FROM indice WHERE id_memoria IN (SELECT id FROM memorias WHERE tipo = ?)", (tipo,))
+            return self._bd.execute("DELETE FROM memorias WHERE tipo = ?", (tipo,)).rowcount
 
     def podar(self, tipo: str, manter: int) -> int:
         """Apaga as memórias mais antigas de um tipo até sobrarem ``manter`` (o que ele leu na internet tem teto)."""

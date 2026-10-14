@@ -82,6 +82,12 @@ class _SemSeguir(urllib.request.HTTPRedirectHandler):
 _ABRIDOR = urllib.request.build_opener(_SemSeguir)
 
 
+def e_api(url: str) -> bool:
+    """O endereço é a API da Wikimedia (e não uma página de site)?"""
+    partes = urlsplit(url)
+    return bool(_API_WIKIMEDIA.match(partes.hostname or "")) and partes.path == "/w/api.php"
+
+
 def tipo_aceito(tipo: str) -> bool:
     return tipo.split(";")[0].strip().lower() in TIPOS_ACEITOS
 
@@ -165,7 +171,9 @@ class Navegador:
         """Lê um endereço e devolve o texto. Levanta ``ErroDeRede`` se não puder ou não conseguir."""
         url = endereco_limpo(url)
         with self._trava:
-            if por_conta_propria:
+            # O teto por hora protege os sites e o buscador. A API da Wikimedia é feita para programas
+            # e aguenta muito mais do que ele pede (dois pedidos por assunto), então não entra na conta.
+            if por_conta_propria and not e_api(url):
                 if self.restam() <= 0:
                     self._barrar(url, "o teto de pedidos desta hora acabou", por_conta_propria)
                 self._sozinho.append(self._relogio())
@@ -210,7 +218,7 @@ class Navegador:
             self._barrar(url, "o nome não aponta para a internet pública", por_conta_propria)
         if self._descansando.get(site, 0) > self._relogio():
             self._barrar(url, "o site pediu calma; volto mais tarde", por_conta_propria)
-        if _API_WIKIMEDIA.match(site) and partes.path == "/w/api.php":
+        if e_api(url):
             return
         regras = self._regras_de(f"{partes.scheme}://{partes.netloc}", por_conta_propria)
         if regras is None or not regras.can_fetch(NOME_PARA_ROBOTS, url):

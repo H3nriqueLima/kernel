@@ -7,4 +7,4 @@ pela segurança antes de chegar às mãos.
 
 NOME = "K.E.R.N.E.L"
 NOME_COMPLETO = "Kinetic Extended Resolution Network and Evolutionary Logic"
-VERSAO = "0.4.0"
+VERSAO = "0.5.0"
