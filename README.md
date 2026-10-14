@@ -2,7 +2,16 @@
 
 **Kinetic Extended Resolution Network and Evolutionary Logic** — um Jarvis pessoal construído do zero, 100% local, no seu PC.
 
-Versão **0.5**: uma rodada de ajustes antes do cérebro maior. A conversa ficou mais esperta (perguntas que ele não conhecia, "fale mais", perguntas sobre ele mesmo), ele explora com critério (sem perder tempo com o Windows), não fala sozinho quando você não está e conta o que aprendeu. Da 0.4 vem a pesquisa na internet; da 0.3, a voz de difones; da 0.2, a autonomia, o celular e a orbe. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
+Versão **0.5.1**: a Fase 0 do [sub-roadmap](docs/ROADMAP.md), a 0.5 consolidada e protegida:
+- cópias de segurança diárias, com restauração testada;
+- o selo de integridade cobre todo o código que aplica as regras;
+- cada fim de treino diz por quê;
+- os bancos não travam com leituras de fora;
+- o celular só é atendido da rede local.
+
+O que mudou, e o que ficou documentado como risco aceito, está em [docs/fase0/README.md](docs/fase0/README.md).
+
+A 0.5 foi uma rodada de ajustes antes do cérebro maior. A conversa ficou mais esperta (perguntas que ele não conhecia, "fale mais", perguntas sobre ele mesmo), ele explora com critério (sem perder tempo com o Windows), não fala sozinho quando você não está e conta o que aprendeu. Da 0.4 vem a pesquisa na internet; da 0.3, a voz de difones; da 0.2, a autonomia, o celular e a orbe. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Ligar e desligar
 
@@ -11,6 +20,8 @@ Versão **0.5**: uma rodada de ajustes antes do cérebro maior. A conversa ficou
 - **Parar só a autonomia:** diga `para` no chat, ou toque no botão de pausa. Para voltar: `pode continuar`.
 
 Pelo terminal: `.venv\Scripts\python.exe -m kernel iniciar --janela`, `... estado`, `... desligar`.
+
+**Ligue sempre pelo `iniciar.bat`.** Ligado de dentro de outro programa (o app do Claude, um editor), ele é fechado junto quando esse programa fecha ou se atualiza. Foi o que interrompeu o treino de 13/10 ([investigação](docs/fase0/investigacao-a3.md)).
 
 ## Autonomia: ele explora o PC sozinho
 
@@ -83,7 +94,11 @@ paginas_por_hora = 30     # teto de pedidos por hora quando pesquisa sozinho
 - **Só lê.** Ele usa um leitor de páginas próprio (`kernel/internet/rede.py`), que só sabe fazer pedidos de leitura. Não entra em conta, não preenche formulário, não guarda cookie e não baixa arquivo: só aceita texto.
 - **Não usa os seus navegadores.** No Chrome, no Edge e no Firefox estão as suas contas abertas (e-mail, banco, redes sociais); um programa que anda sozinho pela internet não deve carregar isso. O único contato com o seu navegador é `abre a fonte` ou `abre o site ...`: ele pede confirmação e o Windows abre a página para **você** ver.
 - **Só a internet pública.** A sua máquina e a sua rede local (roteador, impressora, o próprio serviço dele) ficam de fora, mesmo quando um site tenta redirecionar para lá ou usa um nome que aponta para dentro.
-- **O que sai do PC são as palavras da pesquisa**, nunca o conteúdo dos seus arquivos. E os assuntos dos seus arquivos só viram pesquisa se você ligar `assuntos_dos_arquivos`: vem desligado porque o que está nos arquivos pode ser de outras pessoas (clientes, por exemplo).
+- **O que sai do PC são as palavras da pesquisa**, nunca o conteúdo dos seus arquivos. E os assuntos dos seus arquivos só viram pesquisa se você ligar `assuntos_dos_arquivos`: vem desligado porque o que está nos arquivos pode ser de outras pessoas (clientes, por exemplo). Mesmo ligado, nunca saem:
+  - nomes próprios vistos nos arquivos;
+  - palavras com número;
+  - o seu nome;
+  - o que você puser em `nunca_pesquisar`.
 - **Respeita os sites.** Lê o `robots.txt` de cada um, espera entre dois pedidos ao mesmo site, tem teto por hora e, se um site pede prova de que não é robô, desiste e o deixa em paz. Não tenta contornar.
 - **O freio é o mesmo.** `para` segura a pesquisa por conta própria na hora (um pedido seu ele continua atendendo). `ligada = false` segura tudo.
 - **O que vem da internet é texto, não ordem.** Nenhuma frase lida numa página vira comando para as mãos dele.
@@ -180,6 +195,8 @@ Para **falar** com ele pelo celular, toque no campo de texto e use o microfone d
 O que saber:
 
 - A conversa pela rede local vai **sem criptografia** (HTTP). Use só no Wi-Fi de casa.
+- Ele só atende aparelhos da rede local (endereços como `192.168.x.x`). Mesmo que o roteador abra a porta para a internet, quem vier de fora é recusado, até com a chave de um celular pareado.
+- O registro e o diário só aparecem no PC: o registro mostra caminhos e trechos dos seus arquivos.
 - Um aparelho pareado pode conversar e confirmar ações. Para cortar o acesso: menu ≡ → Celular → esquecer.
 - Reconhecimento de fala **dele** (sem depender do teclado do celular) ainda não existe: precisa de um modelo treinado, que é uma fase à frente no plano.
 
@@ -224,8 +241,25 @@ Tudo o que ele aprende e guarda fica em `dados/` (fora do Git).
 
 - Toda ação das mãos pede confirmação; abrir programa, baixar e treinar pedem sempre (está no código, a configuração não afrouxa).
 - Sozinho, ele só olha, dentro das regras da seção de autonomia.
-- No PC, a API exige um código que só a página recebe. Pela rede, só entra aparelho pareado. Parear e despareamento só no PC.
-- `kernel/seguranca/selo.json` guarda a impressão digital do código de segurança. Se algo ali mudar, ele sobe em **modo seguro** (sem mãos e sem autonomia). Quando *você* editar, revise e rode `python -m kernel selar`.
+- No PC, a API exige um código que só a página recebe. Pela rede, só entra aparelho pareado e da rede local. Parear e desparear, ler o registro e ler o diário, só no PC.
+- **O selo.** `kernel/seguranca/selo.json` guarda a impressão digital de todo o código que aplica as regras: a pasta `seguranca/`, a API, o freio, os reflexos, as ferramentas, a porta da internet, o explorador, o treino, as cópias, a configuração e o `__main__`. A lista está em `integridade.CRITICOS`.
+- Ele confere o selo na partida e de 10 em 10 minutos. Se algo mudar, entra em **modo seguro** (sem mãos e sem autonomia) e avisa. Quando *você* editar um desses arquivos, revise e rode `python -m kernel selar`.
+- O checkpoint do treino é lido só como números (`weights_only=True`). Cada checkpoint e o `modelo.npz` saem com a impressão digital ao lado, e um arquivo que não confere não é usado.
+
+## Cópias de segurança
+
+Uma por dia, feita pelo próprio serviço em `dados/copias/`. Ele guarda as 7 mais novas. Cada cópia leva:
+- a memória, o mapa e a fila da internet;
+- o estado, os aparelhos pareados, os comandos ensinados e o diário;
+- o cérebro do dia a dia e o checkpoint.
+
+Cada arquivo vai com a impressão digital, e cada banco é conferido na hora da cópia.
+
+```
+python -m kernel copia fazer | listar | conferir [NOME] | restaurar NOME | compactar
+```
+
+Restaurar só com o serviço desligado. Antes de trocar qualquer coisa, ele confere a cópia e guarda o estado atual, para dar para desfazer. O passo a passo, os cuidados e o ensaio feito com os dados reais estão em [docs/fase0/restauracao.md](docs/fase0/restauracao.md).
 
 ## Treinar o cérebro e a palavra de ativação
 
@@ -271,7 +305,7 @@ A palavra de ativação (`python -m kernel ouvidos gravar ...`) precisa de um mi
 .venv\Scripts\python.exe -m pytest
 ```
 
-Mais de 330 testes: exploração (o que olha e o que nunca olha), o freio, a internet (numa internet de mentira: nenhum teste sai para a rede), contas, enciclopédia, a voz de ponta a ponta (PSOLA, alinhador e um banco de difones montado na hora), pareamento do celular, a API por HTTP de verdade, memória, segurança, mãos, o núcleo de ponta a ponta e o cérebro.
+Mais de 350 testes: exploração (o que olha e o que nunca olha), o freio, a internet (numa internet de mentira: nenhum teste sai para a rede), contas, enciclopédia, a voz de ponta a ponta (PSOLA, alinhador e um banco de difones montado na hora), pareamento do celular, a API por HTTP de verdade, memória, segurança, mãos, o núcleo de ponta a ponta e o cérebro.
 
 ## O que ainda não existe
 

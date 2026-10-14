@@ -34,6 +34,12 @@ Montada a partir do registro do K.E.R.N.E.L, do `treino.csv`, dos logs do Window
 
 **3. Foi a atualização do app do Claude.** O serviço era filho do app do Claude: tinha sido iniciado por ele às 23:20. O fechamento coincide, no mesmo segundo, com a atualização do app.
 
+Conferido em 14/10, com `IsProcessInJob` do Windows:
+- o shell que o Claude Code usa para rodar comandos está dentro de um *job* do app, um grupo de processos que o Windows fecha junto;
+- o serviço ligado pelo `iniciar.bat` não está, e o Explorer também não.
+
+Um serviço lançado por aquele shell nasce dentro do job, e por isso morreu com a atualização.
+
 Quando o Windows fecha um app para atualizá-lo, fecha junto os processos que nasceram dele:
 - os programas de console, como o treino, recebem um sinal de interrupção;
 - os outros, como o serviço (`pythonw`), recebem um pedido de fechamento e, se não respondem, são fechados à força.

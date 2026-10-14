@@ -4,6 +4,8 @@ Este é um roteiro de estabilização que corre antes da fase 4 do [plano](PLANO
 
 ## Fase 0 — Consolidar e proteger a versão 0.5.0
 
+**Situação:** concluída em 14/10/2026 com a versão 0.5.1 (branch `estabilizacao-0.5`). Veja o [fechamento](fase0/README.md).
+
 **Objetivo:** transformar o sistema atual em uma base confiável para evoluções futuras.
 
 **Tarefas:**
@@ -19,7 +21,7 @@ Este é um roteiro de estabilização que corre antes da fase 4 do [plano](PLANO
 
 **Portão de saída:** todos os problemas críticos resolvidos ou explicitamente documentados; nenhum mecanismo de parada, autenticação ou permissão enfraquecido.
 
-O andamento e o fechamento de cada tarefa ficam em [fase0/README.md](fase0/README.md).
+O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [fase0/README.md](fase0/README.md).
 
 ## Fases seguintes
 
