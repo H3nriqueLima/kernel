@@ -1,2 +1,4 @@
 # Ouvidos: captura do microfone para a palavra de ativação.
 sounddevice
+# Voz: ler os MP3 do corpus de difones (python -m kernel voz construir).
+soundfile>=0.12

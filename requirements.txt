@@ -3,3 +3,5 @@
 numpy>=2.0
 fastapi>=0.110
 uvicorn>=0.29
+# Texto de PDFs (sem ele, os PDFs entram no mapa só pelo nome).
+pypdf>=6.0
