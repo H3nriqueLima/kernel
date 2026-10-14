@@ -269,3 +269,16 @@ def test_resumo_por_extracao():
     assert resumo.count("A clorofila é o pigmento") == 1                # e frase repetida não entra duas vezes
     assert resumir("", "qualquer") == "" and resumir(["a", "b"], "x") == ""
     assert len(resumir(texto * 3, "fotossíntese", quantas=9, limite=200)) <= 201
+
+
+def test_artigo_principal_vem_antes_dos_de_mesmo_nome(tmp_path):
+    from kernel.conhecimento import Enciclopedia
+
+    corpus = tmp_path / "corpus.txt"
+    corpus.write_text(
+        "Brasil (álbum)\n\nBrasil é um álbum lançado em 1989, com canções sobre o país e muitas faixas longas.\n<|fim|>\n"
+        "Brasil\n\nBrasil é o maior país da América do Sul.\n<|fim|>\n", encoding="utf-8")
+    enciclopedia = Enciclopedia(tmp_path / "conhecimento.db")
+    enciclopedia.construir(corpus)
+    assert enciclopedia.responder("O que é o Brasil?")[0] == "Brasil"
+    enciclopedia.fechar()

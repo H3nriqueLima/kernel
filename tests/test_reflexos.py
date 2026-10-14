@@ -186,3 +186,12 @@ def test_pergunta_no_chat_usa_o_que_ele_estudou(kernel, tmp_path):
     assert "eletricista" in falas(kernel)[-1]                           # não estudou, mas lembra
     dizer(kernel, "o que é um quasar?")
     assert falas(kernel)[-1] == "Não achei isso no que eu estudei."
+
+
+def test_treinar_por_tempo_sem_dizer_cerebro():
+    assert reflexos.estudo("Treine por 6 horas") == ("treinar", {"horas": 6.0})
+    assert reflexos.estudo("treina mais 2 horas") == ("treinar", {"horas": 2.0})
+    assert reflexos.estudo("treina durante meia hora")[1]["horas"] == 0.5
+    assert reflexos.estudo("treina por um tempo") is None                     # sem duração, não adivinha
+    assert reflexos.estudo("treina a palavra de ativação por 5 minutos") is None
+    assert reflexos.estudo("eu treino por 2 horas na academia") is None

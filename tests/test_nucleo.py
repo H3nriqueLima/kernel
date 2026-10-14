@@ -204,3 +204,14 @@ def test_codigo_alterado_com_o_servico_ligado_liga_o_modo_seguro(kernel, monkeyp
     assert "Entrei em modo seguro" in falas(kernel)[-1]
     asyncio.run(kernel.receber("abre a calculadora"))
     assert "modo seguro" in falas(kernel)[-1] and kernel.seguranca.pendentes() == []
+
+
+def test_como_foi_o_ultimo_treino(kernel):
+    asyncio.run(kernel.receber("como foi seu último treino?"))
+    assert "ainda não foi treinado" in falas(kernel)[-1]
+    kernel.registro.anotar("estudo", evento="treino_acabou", motivo="interrupcao", codigo=0, pedimos=False,
+                           horas_pedidas=6.0, passo=20573, passo_inicial=20000, segundos=702.0, melhor_validacao=3.16)
+    asyncio.run(kernel.receber("como foi seu último treino?"))
+    resposta = falas(kernel)[-1]
+    assert "Durou 12 minutos, de 6 horas pedidas, e foi do passo 20.000 ao 20.573" in resposta
+    assert "fechado de fora" in resposta

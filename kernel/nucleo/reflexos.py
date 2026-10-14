@@ -84,6 +84,10 @@ def saudacao(texto: str, usuario: str, lembretes_pendentes: int) -> str | None:
 
 _ESTUDAR_WIKI = re.compile(r"\b(?:estud\w+|aprend\w+|baix\w+|lei?a?)\b.*\bwikipedia\b")
 _TREINAR = re.compile(r"\btrein\w+\b.*\bcerebro\b")
+# "treine por 6 horas" / "treina mais 2 horas": o único treino que dura horas é o do cérebro. Precisa do verbo
+# (não "o treino de ontem") e de uma duração; a palavra de ativação treina de outro jeito e fica de fora.
+_TREINAR_POR_TEMPO = re.compile(r"\btrein(?:a|e|ar)\b(?:\s+\w+){0,3}?\s+(?:por|durante|mais)\b")
+_NAO_E_O_CEREBRO = re.compile(r"\b(?:ativacao|palavra|ouvidos?|voz|comandos?)\b")
 _PARAR_ESTUDO = re.compile(r"\b(?:par[ae]\w*|cancel\w+|interromp\w+)\b.*\b(?:treino|treinamento|estudo|download)\b")
 _ANDAMENTO = re.compile(r"\b(?:como (?:esta|vai|anda)|andamento|progresso|quanto falta)\b.*\b(?:treino|treinamento|estudo|download)\b")
 
@@ -117,6 +121,10 @@ def estudo(texto: str) -> tuple[str, dict] | None:
         return "wikipedia", {"partes": 99 if tudo else int(partes.group(1)) if partes else 1}
     if _TREINAR.search(plano):
         return "treinar", {"horas": _duracao_em_horas(normalizar(texto)) or 8.0}
+    if _TREINAR_POR_TEMPO.search(plano) and not _NAO_E_O_CEREBRO.search(plano):
+        horas = _duracao_em_horas(normalizar(texto))
+        if horas:
+            return "treinar", {"horas": horas}
     return None
 
 

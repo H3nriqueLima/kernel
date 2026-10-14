@@ -118,7 +118,8 @@ class Enciclopedia:
             return []
         with self._trava:
             exatos = self._bd.execute(
-                "SELECT titulo, texto FROM artigos WHERE chave = ? ORDER BY tamanho DESC LIMIT ?",
+                # "Brasil" antes de "Brasil (álbum)": o título sem parênteses é o artigo principal
+                "SELECT titulo, texto FROM artigos WHERE chave = ? ORDER BY (titulo LIKE '%(%'), tamanho DESC LIMIT ?",
                 (assunto, k)).fetchall()
             if exatos:
                 return [Artigo(titulo, texto, 100.0) for titulo, texto in exatos]

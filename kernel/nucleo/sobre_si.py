@@ -22,6 +22,8 @@ _TOPICOS = [
     ("origem", r"\bquem (?:te |o )?(?:criou|fez|programou|desenvolveu|construiu|escreveu|inventou)\b|\bcriador\b|"
                r"\boutr[oa] (?:ia|inteligencia)\b|\bclaude\b|\banthropic\b|\bajust\w+ em voce\b|\bte (?:ajusta|programa|modifica)\b|"
                r"\bseu (?:proprio )?codigo\b|\bcomo voce (?:foi feito|nasceu|surgiu)\b|\bde onde voce (?:veio|vem)\b"),
+    ("treino", r"\b(?:ultimo|seu|teu|o) (?:treino|treinamento)\b|\btreinou\b|"
+               r"\b(?:treino|treinamento)\b.*\b(?:foi|deu|terminou|parou|acabou|durou)\b"),
     ("cerebro", r"\bcerebro\b|\brede neural\b|\bneuronios?\b|\bmodelo de linguagem\b|\bparametros\b|\bgpt\b"),
     ("pastas", r"\bpastas?\b|\bdiretorios?\b|\bacesso\b|\bpermiss\w+\b|\b(?:pode|consegue) (?:explorar|ver|olhar|ler|acessar)\b|"
                r"\balcance\b|\bmeus arquivos\b"),
@@ -225,6 +227,62 @@ def _autonomia(kernel) -> str:
             "fico quieto e guardo as novidades para quando voltar. Agir no PC eu não ajo sozinho: só com a sua confirmação.")
 
 
+_POR_QUE_PAROU = {"tempo": "o tempo pedido acabou", "meta": "chegou à meta de passos",
+                  "pedido": "pediram para parar (você, ou o serviço desligando)",
+                  "interrupcao": "o programa foi fechado de fora, mas salvou o checkpoint antes de sair"}
+
+
+def _ultimo_treino(registro, dias: int = 30) -> dict | None:
+    """O evento do fim do último treino nos últimos ``dias`` dias do registro."""
+    for dia in reversed(registro.dias()[-dias:]):
+        eventos = registro.do_dia(dia)
+        for e in reversed(eventos):
+            if e.get("tipo") == "estudo" and e.get("evento") == "treino_acabou":
+                return e
+        for e in reversed(eventos):   # treinos de antes da v0.5.1 só deixavam o "fim"
+            if e.get("tipo") == "estudo" and e.get("evento") == "fim" and str(e.get("trabalho", "")).startswith("trein"):
+                return e
+    return None
+
+
+def _treino(kernel) -> str:
+    """Como foi o último treino: quando acabou, quanto durou, até que passo e por que parou."""
+    from ..cerebro import inferencia
+
+    if kernel.estudo.ocupado and "trein" in (kernel.estudo.trabalho or ""):
+        return f"Estou treinando o cérebro agora: {kernel.estudo.situacao}."
+    fim = _ultimo_treino(kernel.registro)
+    if fim is None:
+        return cerebro(kernel)
+    quando = f"{fim['ts'][8:10]}/{fim['ts'][5:7]} às {fim['ts'][11:16]}"
+    if fim.get("evento") == "treino_acabou":
+        minutos = float(fim.get("segundos") or 0) / 60
+        duracao = f"{minutos:.0f} minutos" if minutos < 90 else f"{minutos / 60:.1f} horas".replace(".", ",")
+        pedidas = fim.get("horas_pedidas")
+        frase = f"O último treino acabou em {quando}. Durou {duracao}"
+        if pedidas:
+            frase += f", de {float(pedidas):g} horas pedidas".replace(".", ",")
+        if fim.get("passo") is not None and fim.get("passo_inicial") is not None:
+            de, ate = (f"{n:,}".replace(",", ".") for n in (fim["passo_inicial"], fim["passo"]))
+            frase += f", e foi do passo {de} ao {ate}"
+        frase += f". Parou porque {_POR_QUE_PAROU.get(fim.get('motivo'), 'não sei: o motivo não ficou registrado')}."
+        partes = [frase]
+    else:
+        resultado = str(fim.get("resultado", ""))
+        for sobra in ("Treino encerrado. ", " Reinicie o serviço para ele usar o cérebro novo.",
+                      " Já estou usando o cérebro novo."):
+            resultado = resultado.replace(sobra, "")
+        partes = [f"O último treino acabou em {quando}: {resultado} "
+                  "Esse foi antes de eu anotar o motivo de cada parada."]
+    historia = inferencia.historico(kernel.cfg.pasta("cerebro"))
+    if historia:
+        passos = f"{historia['passos']:,}".replace(",", ".")
+        partes.append(f"No total, o cérebro treinou {passos} passos"
+                      + f" em {historia['horas']:.1f} horas".replace(".", ",")
+                      + f", e a melhor perda de validação está em {historia['melhor']:.2f}.".replace(".", ",", 1))
+    return " ".join(partes)
+
+
 def _estado(kernel) -> str:
     estado = kernel.estado()
     fazendo = {"explorando": "explorando as suas pastas", "pesquisando": "pesquisando na internet",
@@ -233,6 +291,7 @@ def _estado(kernel) -> str:
             f"com {estado['memoria'].get('total', 0)} lembranças e a curiosidade em {estado['impulsos']['curiosidade']:.2f}.")
 
 
-_FALAS = {"quem": _quem, "nome": _nome, "funcoes": _funcoes, "pastas": _pastas, "cerebro": cerebro, "memoria": _memoria,
+_FALAS = {"quem": _quem, "nome": _nome, "funcoes": _funcoes, "pastas": _pastas, "cerebro": cerebro, "treino": _treino,
+          "memoria": _memoria,
           "internet": _internet, "voz": _voz, "origem": _origem, "consciencia": _consciencia, "seguranca": _seguranca,
           "autonomia": _autonomia, "estado": _estado}
