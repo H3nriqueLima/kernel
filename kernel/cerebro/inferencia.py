@@ -18,8 +18,10 @@ Duas coisas fazem a geração ser rápida e legível:
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
+import time
 from pathlib import Path
 
 import numpy as np
@@ -35,7 +37,28 @@ def exportar(modelo, arquivo: Path) -> None:
     pesos = {nome: p.detach().cpu().numpy().astype(np.float32) for nome, p in modelo.state_dict().items()}
     temporario = Path(arquivo).with_suffix(".tmp.npz")
     np.savez(temporario, _config=np.array(json.dumps(modelo.configuracao())), **pesos)
-    temporario.replace(arquivo)
+    digital = _impressao(temporario)
+    for tentativa in range(10):   # o serviço (ou uma cópia de segurança) pode estar lendo o modelo agora
+        try:
+            temporario.replace(arquivo)
+            break
+        except PermissionError:
+            if tentativa == 9:
+                raise
+            time.sleep(0.5)
+    Path(str(arquivo) + ".sha256").write_text(digital + "\n", encoding="ascii")
+
+
+class ModeloEstragado(Exception):
+    """O arquivo de pesos não confere com a impressão digital gravada junto com ele."""
+
+
+def _impressao(arquivo: Path) -> str:
+    resumo = hashlib.sha256()
+    with open(arquivo, "rb") as f:
+        for bloco in iter(lambda: f.read(1 << 20), b""):
+            resumo.update(bloco)
+    return resumo.hexdigest()
 
 
 def _norma(x, ganho, vies):
@@ -187,15 +210,23 @@ def carregar_de(pasta: Path) -> CerebroNumpy | None:
     modelo, tokenizador = Path(pasta) / MODELO, Path(pasta) / TOKENIZADOR
     if not (modelo.exists() and tokenizador.exists()):
         return None
+    guardada = Path(str(modelo) + ".sha256")   # pesos de antes da v0.5.1 não têm impressão: valem como estão
+    if guardada.exists() and guardada.read_text(encoding="ascii").strip() != _impressao(modelo):
+        raise ModeloEstragado(f"{MODELO} não confere com a impressão digital gravada no treino")
     with np.load(modelo) as dados:
         cfg = json.loads(str(dados["_config"]))
         pesos = {nome: dados[nome] for nome in dados.files if nome != "_config"}
     return CerebroNumpy(pesos, cfg, Tokenizador.carregar(tokenizador))
 
 
-def carregar(cfg) -> CerebroNumpy | None:
-    """O cérebro treinado em ``dados/cerebro``, ou None se ainda não existe."""
-    return carregar_de(cfg.pasta("cerebro"))
+def carregar(cfg, avisar=None) -> CerebroNumpy | None:
+    """O cérebro treinado em ``dados/cerebro``, ou None se ainda não existe (ou se o arquivo não confere)."""
+    try:
+        return carregar_de(cfg.pasta("cerebro"))
+    except ModeloEstragado as problema:
+        if avisar:
+            avisar(str(problema))
+        return None
 
 
 def historico(pasta: Path) -> dict | None:

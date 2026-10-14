@@ -61,8 +61,11 @@ class Estudo:
             except Exception as erro:  # sem internet, disco cheio, treino que falhou...
                 mensagem = f"Não consegui terminar ({nome}): {erro}"
             self.registro.anotar("estudo", evento="fim", trabalho=nome, resultado=mensagem)
-            self.trabalho, self.situacao = None, ""
-            self.ao_terminar(nome, mensagem)
+            try:
+                # avisa antes de se dizer livre: quem espera o estudo acabar já encontra a notícia dada
+                self.ao_terminar(nome, mensagem)
+            finally:
+                self.trabalho, self.situacao = None, ""
 
         threading.Thread(target=rodar, name=f"estudo-{nome}", daemon=True).start()
 
@@ -154,20 +157,37 @@ class Estudo:
             cwd=str(self.cfg.raiz), env={**os.environ, "KERNEL_DADOS": str(self.cfg.dados)},
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        ultima = ""
+        ultima, resumo = "", {}
         for linha in self._processo.stdout:
             linha = linha.strip()
-            if linha:
+            if linha.startswith("RESUMO "):   # a última linha do treino diz, para máquina, por que ele parou
+                try:
+                    resumo = json.loads(linha[len("RESUMO "):])
+                except ValueError:
+                    pass
+            elif linha:
                 ultima = linha
                 self.situacao = linha[:160]
         codigo = self._processo.wait()
         self._processo = None
+        pedimos = self._parar.is_set()
         if not self._mantendo:
             self._arquivo_do_treino.unlink(missing_ok=True)
+        motivo = resumo.get("motivo", "desconhecido")
+        self.registro.anotar("estudo", evento="treino_acabou", motivo=motivo, codigo=codigo, pedimos=pedimos,
+                             horas_pedidas=horas,
+                             **{k: v for k, v in resumo.items() if k not in ("motivo", "horas_pedidas")})
         if codigo != 0:
-            raise RuntimeError(ultima or f"o treino saiu com código {codigo}")
+            raise RuntimeError(f"{ultima or f'o treino saiu com código {codigo}'} (veja dados/cerebro/treino.log)")
         ultima = ultima.replace(" Reinicie o serviço para ele usar o cérebro novo.", "")
-        return f"Treino encerrado. {ultima} Já estou usando o cérebro novo."
+        fala = f"Treino encerrado. {ultima} Já estou usando o cérebro novo."
+        # Acabou antes de 90% do tempo pedido sem ninguém pedir? (Foi o que aconteceu em 13/10: veja
+        # docs/fase0/investigacao-a3.md.) Avisa no chat em vez de deixar passar como um fim normal.
+        cedo = not pedimos and motivo != "meta" and resumo.get("segundos", 0) < 0.9 * horas * 3600
+        if cedo or (motivo == "pedido" and not pedimos) or motivo in ("interrupcao", "desconhecido"):
+            fala += (" Atenção: ele parou antes da hora sem eu pedir. O que o treino disse está em "
+                     "dados/cerebro/treino.log.")
+        return fala
 
 
 class EstudarWikipedia(Ferramenta):

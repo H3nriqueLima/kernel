@@ -112,7 +112,8 @@ class Kernel:
             TreinarCerebro(self.estudo),
         ])
         self.classificador = comandos.garantir(cfg)
-        self.cerebro = inferencia.carregar(cfg)  # None enquanto não houver cérebro treinado
+        # None enquanto não houver cérebro treinado (ou se o arquivo de pesos não conferir com a impressão digital)
+        self.cerebro = inferencia.carregar(cfg, avisar=lambda problema: self.registro.anotar("cerebro", problema=problema))
         self.enciclopedia = Enciclopedia(cfg.dados / "conhecimento.db")
         self.diario = Diario(cfg, self.registro, self.memoria, relogio)
         self.ouvidos = None                      # ligados no começo do laço, se houver modelo treinado
@@ -967,7 +968,8 @@ class Kernel:
         """Chamado pela thread do estudo; a notícia volta para o laço principal."""
         def avisar():
             if trabalho.startswith("treinar"):
-                self.cerebro = inferencia.carregar(self.cfg)
+                self.cerebro = inferencia.carregar(
+                    self.cfg, avisar=lambda problema: self.registro.anotar("cerebro", problema=problema))
             self.dizer(mensagem, classe="iniciativa")
 
         if self._laco_principal and self._laco_principal.is_running():

@@ -225,6 +225,7 @@ def test_gerar_um_pedaco_por_vez_da_a_mesma_conta(torch, tmp_path):
     for posicao, token in enumerate(ids):
         assert np.abs(cerebro._avancar(token, posicao, memoria) - inteira[posicao]).max() < 1e-4
 
+    cerebro._sorteio = np.random.default_rng(0)   # sem semente, 1 vez em ~8 o sorteio caía no fim antes do pedaço 24
     saida = cerebro.gerar(ids, 60, temperatura=1.0)                     # passa do tamanho da janela (24) sem quebrar
     assert len(saida) > 24 and saida[:len(ids)] == ids
 
@@ -270,3 +271,79 @@ def test_historico_e_avaliacao_do_treino(torch, tmp_path):
     assert abs(taxa_na_sessao(sessao, 5, 0.0, False) - 3e-3) < 1e-9
     assert taxa_na_sessao(sessao, 100, 0.5, False) < 3e-3 and abs(taxa_na_sessao(sessao, 100, 1.0, False) - 3e-4) < 1e-9
     assert abs(taxa_na_sessao(sessao, 100, 0.0, True) - 1.5e-3) < 1e-9
+
+
+class _Intruso:
+    """Um objeto qualquer dentro do checkpoint: com weights_only=True, ler o arquivo não pode executá-lo."""
+
+
+def test_checkpoint_protegido_e_motivo_do_fim(torch, tmp_path):
+    from kernel.cerebro import dados
+    from kernel.cerebro.treinar import ANTERIOR, CHECKPOINT, DIARIO, ConfigTreino, confere, treinar
+
+    corpus = tmp_path / "corpus.txt"
+    corpus.write_text(TEXTO * 5, encoding="utf-8")
+    tok = tokenizador.treinar([TEXTO], tamanho=300)
+    tok.salvar(tmp_path / inferencia.TOKENIZADOR)
+    dados.preparar(corpus, tok, tmp_path)
+    cfg = ConfigTreino(tamanho="nano", passos=20, lote=4, aquecimento=5, avaliar_cada=10,
+                       lotes_de_avaliacao=1, dispositivo="cpu")
+    avisos = []
+    resumo = treinar(tmp_path, cfg, avisar=avisos.append)
+    atual, anterior = tmp_path / CHECKPOINT, tmp_path / ANTERIOR
+    assert resumo["motivo"] == "meta" and resumo["passo_inicial"] == 0
+    assert confere(atual) is True and confere(tmp_path / inferencia.MODELO) is True
+    assert anterior.exists() and confere(anterior) is True   # o checkpoint do passo 10 ficou guardado
+    diario = (tmp_path / DIARIO).read_text(encoding="utf-8")
+    assert "sessão começou" in diario and "sessão acabou: chegou à meta de passos | passo 20" in diario
+
+    # o pedido de parada (o arquivo PARAR) aparece como motivo
+    (tmp_path / "PARAR").write_text("", encoding="utf-8")
+    cfg.passos = 40
+    assert treinar(tmp_path, cfg, avisar=avisos.append)["motivo"] == "pedido"
+
+    # checkpoint estragado: volta para o anterior e avisa
+    atual.write_bytes(atual.read_bytes()[:-100])
+    cfg.passos = 30
+    avisos.clear()
+    resumo = treinar(tmp_path, cfg, avisar=avisos.append)
+    assert any("não confere" in a and "Continuo a partir de checkpoint-anterior.pt" in a for a in avisos)
+    assert resumo["passo"] == 30
+
+    # um arquivo com código dentro (sem impressão, como os de antes da v0.5.1) é recusado, não executado
+    torch.save({"modelo": _Intruso()}, atual)
+    (tmp_path / (CHECKPOINT + ".sha256")).unlink()
+    avisos.clear()
+    treinar(tmp_path, cfg, avisar=avisos.append)
+    assert any("só como números" in a for a in avisos)
+
+    # os dois estragados: não começa do zero sem você saber
+    atual.write_bytes(b"lixo")
+    anterior.write_bytes(b"lixo")
+    with pytest.raises(SystemExit, match="Não há checkpoint em que dê para confiar"):
+        treinar(tmp_path, cfg, avisar=avisos.append)
+
+
+def test_modelo_adulterado_nao_e_carregado(torch, tmp_path):
+    from kernel.cerebro.gpt import GPT, ConfigGPT
+
+    tok = tokenizador.treinar([TEXTO], tamanho=300)
+    tok.salvar(tmp_path / inferencia.TOKENIZADOR)
+    inferencia.exportar(GPT(ConfigGPT(vocab=tok.tamanho, contexto=16, camadas=1, cabecas=2, dim=16)),
+                        tmp_path / inferencia.MODELO)
+    assert inferencia.carregar_de(tmp_path) is not None
+    pesos = tmp_path / inferencia.MODELO
+    bytes_ = bytearray(pesos.read_bytes())
+    bytes_[-200] ^= 0xFF
+    pesos.write_bytes(bytes(bytes_))
+    with pytest.raises(inferencia.ModeloEstragado):
+        inferencia.carregar_de(tmp_path)
+
+    class Cfg:
+        def pasta(self, nome):
+            return tmp_path
+    problemas = []
+    assert inferencia.carregar(Cfg(), avisar=problemas.append) is None and "não confere" in problemas[0]
+    inferencia.exportar(GPT(ConfigGPT(vocab=tok.tamanho, contexto=16, camadas=1, cabecas=2, dim=16)), pesos)
+    (tmp_path / (inferencia.MODELO + ".sha256")).unlink()   # sem impressão (de antes da v0.5.1): carrega como está
+    assert inferencia.carregar(Cfg()) is not None

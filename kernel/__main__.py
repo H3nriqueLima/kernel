@@ -20,6 +20,7 @@ import json
 import os
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -54,6 +55,10 @@ def _abrir_janela(endereco: str) -> None:
     webbrowser.open(endereco)
 
 
+def _interromper(_sinal, _quadro):
+    raise KeyboardInterrupt
+
+
 def iniciar(args) -> int:
     cfg = carregar()
     endereco = f"http://127.0.0.1:{cfg.nucleo.porta}/"
@@ -79,6 +84,12 @@ def iniciar(args) -> int:
                                              log_level="warning", access_log=False))
     kernel.ao_desligar = lambda: setattr(servidor, "should_exit", True)
     arquivo_pid = cfg.dados / "kernel.pid"
+    if arquivo_pid.exists():
+        # O arquivo só fica para trás quando o processo anterior morreu sem desligar (fechado à força,
+        # travou, faltou luz). Fica anotado, para não ser um mistério depois.
+        kernel.registro.anotar("servico", evento="queda_anterior",
+                               pid=arquivo_pid.read_text(encoding="utf-8", errors="replace").strip()[:12],
+                               desde=time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(arquivo_pid.stat().st_mtime)))
     arquivo_pid.write_text(str(os.getpid()))
     print(f"{NOME} {VERSAO} — {NOME_COMPLETO}")
     print(f"janela de chat: {endereco}   (Ctrl+C ou o botão Desligar para parar)")
@@ -348,9 +359,17 @@ def cerebro(args) -> int:
         treino = ConfigTreino(tamanho=tamanho, passos=args.passos, horas=args.horas,
                               lote=args.lote or lote, acumular=args.acumular or acumular, taxa=args.taxa,
                               avaliar_cada=args.avaliar_cada, dispositivo=args.dispositivo or cfg.cerebro.dispositivo)
+        from .cerebro.treinar import MOTIVOS
+        if hasattr(signal, "SIGBREAK"):
+            # No Windows, fechar o console, sair da conta ou o sistema fechando o programa chegam como SIGBREAK,
+            # que por padrão mata o processo na hora. Assim eles viram uma interrupção: o checkpoint é salvo.
+            signal.signal(signal.SIGBREAK, _interromper)
         resumo = treinar(pasta, treino)
-        print(f"parou no passo {resumo['passo']} com perda de validação {resumo['melhor_validacao']:.3f}. "
-              "Reinicie o serviço para ele usar o cérebro novo.")
+        print(f"parou no passo {resumo['passo']} ({MOTIVOS[resumo['motivo']]}) com perda de validação "
+              f"{resumo['melhor_validacao']:.3f}. Reinicie o serviço para ele usar o cérebro novo.")
+        # a última linha é para o serviço: ele lê daqui por que o treino parou
+        print("RESUMO " + json.dumps({chave: resumo[chave] for chave in
+                                      ("motivo", "passo", "passo_inicial", "melhor_validacao", "segundos", "horas_pedidas")}))
 
     elif args.acao == "medir":
         from .cerebro.gpt import LOTES

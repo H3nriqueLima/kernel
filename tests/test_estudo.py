@@ -194,3 +194,37 @@ def test_treino_aprovado_sobrevive_ao_reinicio_do_servico(cfg, relogio, monkeypa
     terceiro._retomar_treino()
     assert not any("Retomei" in fala for fala in falas(terceiro))
     terceiro.fechar()
+
+
+def test_motivo_do_fim_do_treino_vai_para_o_registro(kernel, monkeypatch):
+    (kernel.cfg.pasta("cerebro") / "corpus.txt").write_text(CORPUS * 30, encoding="utf-8")
+    saidas = iter([
+        ["parou no passo 100 (o tempo da sessão acabou) com perda de validação 4.321.\n",
+         'RESUMO {"motivo": "tempo", "passo": 100, "passo_inicial": 0, "melhor_validacao": 4.321, '
+         '"segundos": 7200.0, "horas_pedidas": 2.0}\n'],
+        ["parou no passo 30 (foi interrompido (Ctrl+C ou sinal do sistema)) com perda de validação 4.9.\n",
+         'RESUMO {"motivo": "interrupcao", "passo": 30, "passo_inicial": 0, "melhor_validacao": 4.9, '
+         '"segundos": 700.0, "horas_pedidas": 2.0}\n'],
+    ])
+
+    class Processo:
+        def __init__(self, comando, **opcoes):
+            self.stdout = iter(next(saidas))
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setattr(modulo_estudo.subprocess, "Popen", Processo)
+    for _ in range(2):
+        dizer(kernel, "treina o cérebro por 2 horas")
+        (pedido,) = kernel.seguranca.pendentes()
+        kernel.responder_pedido(pedido.id, True)
+        esperar(kernel, 60)
+        kernel.estudo._arquivo_do_treino.unlink(missing_ok=True)
+    fins = [e for e in kernel.registro.ultimos(50) if e.get("evento") == "treino_acabou"]
+    assert [f["motivo"] for f in fins] == ["tempo", "interrupcao"]
+    assert fins[1]["segundos"] == 700.0 and fins[1]["horas_pedidas"] == 2.0
+    assert "RESUMO" not in kernel.estudo.situacao
+    fala_tempo, fala_interrompido = [f for f in falas(kernel) if f.startswith("Treino encerrado")]
+    assert "Atenção" not in fala_tempo
+    assert "parou antes da hora sem eu pedir" in fala_interrompido and "treino.log" in fala_interrompido

@@ -6,7 +6,10 @@ validação, escreve uma amostra, salva o checkpoint e, se melhorou, exporta os
 pesos para o serviço usar.
 
 O treino pode ser interrompido (Ctrl+C) e retomado: o checkpoint guarda o
-modelo, o otimizador e o passo. Há dois jeitos de dizer quanto treinar:
+modelo, o otimizador e o passo. Cada checkpoint sai com a impressão digital
+(SHA-256) ao lado, e o anterior fica guardado: se o novo vier estragado, o
+treino volta para o anterior. Tudo o que o treino diz vai também para
+``treino.log``, inclusive o motivo de ter parado. Há dois jeitos de dizer quanto treinar:
 
 - ``--horas 6``: uma sessão de seis horas, que continua de onde a anterior
   parou. A taxa de aprendizado sobe no começo da sessão e desce em cosseno até
@@ -18,7 +21,11 @@ modelo, o otimizador e o passo. Há dois jeitos de dizer quanto treinar:
 from __future__ import annotations
 
 import csv
+import hashlib
+import json
 import math
+import os
+import pickle
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -33,6 +40,44 @@ from .otimizador import AdamW
 from .tokenizador import Tokenizador
 
 CHECKPOINT = "checkpoint.pt"
+ANTERIOR = "checkpoint-anterior.pt"
+DIARIO = "treino.log"
+# Por que uma sessão de treino acabou (vai para o registro e para a fala do fim do treino).
+MOTIVOS = {"tempo": "o tempo da sessão acabou", "meta": "chegou à meta de passos", "pedido": "parou a pedido",
+           "interrupcao": "foi interrompido (Ctrl+C ou sinal do sistema)"}
+
+
+def _trocar(origem: Path, destino: Path) -> None:
+    """``origem.replace(destino)``, com paciência: no Windows falha se outro programa está lendo o destino."""
+    for tentativa in range(10):
+        try:
+            Path(origem).replace(destino)
+            return
+        except PermissionError:
+            if tentativa == 9:
+                raise
+            time.sleep(0.5)
+
+
+def impressao(arquivo: Path) -> str:
+    """SHA-256 do arquivo, lido aos pedaços (um checkpoint tem dezenas de MB)."""
+    resumo = hashlib.sha256()
+    with open(arquivo, "rb") as f:
+        for bloco in iter(lambda: f.read(1 << 20), b""):
+            resumo.update(bloco)
+    return resumo.hexdigest()
+
+
+def _digital(arquivo: Path) -> Path:
+    return arquivo.with_name(arquivo.name + ".sha256")
+
+
+def confere(arquivo: Path) -> bool | None:
+    """O arquivo ainda é o que foi gravado? None se não há impressão guardada (arquivo de antes da v0.5.1)."""
+    guardada = _digital(arquivo)
+    if not guardada.exists():
+        return None
+    return guardada.read_text(encoding="ascii").strip() == impressao(arquivo)
 
 
 @dataclass
@@ -99,20 +144,68 @@ def salvar_checkpoint(arquivo: Path, modelo: GPT, otimizador: AdamW, passo: int,
     }
     temporario = arquivo.with_suffix(".tmp")
     torch.save(dados, temporario)
-    temporario.replace(arquivo)  # nunca fica um checkpoint pela metade se a luz cair
+    digital = impressao(temporario)
+    if arquivo.exists():   # o anterior fica guardado: se o novo vier estragado, volta-se a ele
+        anterior = arquivo.with_name(ANTERIOR)
+        _trocar(arquivo, anterior)
+        if _digital(arquivo).exists():
+            _trocar(_digital(arquivo), _digital(anterior))
+        else:
+            _digital(anterior).unlink(missing_ok=True)
+    _trocar(temporario, arquivo)  # nunca fica um checkpoint pela metade se a luz cair
+    _digital(arquivo).write_text(digital + "\n", encoding="ascii")
+
+
+def carregar_checkpoint(pasta: Path, avisar=print) -> dict | None:
+    """O checkpoint para continuar o treino: o atual, ou o anterior se o atual estiver estragado.
+
+    É lido só como números (``weights_only=True``): um arquivo adulterado com código dentro é recusado
+    em vez de executado.
+    """
+    atual, anterior = Path(pasta) / CHECKPOINT, Path(pasta) / ANTERIOR
+    problemas = []
+    for arquivo in (atual, anterior):
+        if not arquivo.exists():
+            continue
+        if confere(arquivo) is False:
+            problemas.append(f"{arquivo.name} não confere com a impressão digital guardada")
+            continue
+        try:
+            dados = torch.load(arquivo, map_location="cpu", weights_only=True)
+        except (pickle.UnpicklingError, RuntimeError, EOFError, ValueError) as erro:
+            problemas.append(f"{arquivo.name} não pôde ser lido só como números ({type(erro).__name__})")
+            continue
+        if problemas:
+            avisar(f"aviso: {'; '.join(problemas)}. Continuo a partir de {arquivo.name}.")
+        return dados
+    if problemas:
+        raise SystemExit("Não há checkpoint em que dê para confiar: " + "; ".join(problemas) +
+                         ". Restaure uma cópia (python -m kernel copia restaurar) ou apague os checkpoints para "
+                         "começar um cérebro novo.")
+    return None
 
 
 def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
     """Treina (ou continua treinando) o cérebro em ``pasta``. Devolve um resumo."""
     pasta = Path(pasta)
+    diario_em_texto = pasta / DIARIO
+    dizer = avisar
+
+    def avisar(texto: str) -> None:   # noqa: F811  (o que o treino diz vai também para treino.log)
+        dizer(texto)
+        with open(diario_em_texto, "a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {texto}\n")
+
+    avisar(f"sessão começou: processo {os.getpid()} | horas {cfg.horas} | meta de passos {cfg.passos} | "
+           f"tamanho {cfg.tamanho} | dispositivo pedido {cfg.dispositivo}")
     tokenizador = Tokenizador.carregar(pasta / inferencia.TOKENIZADOR)
     torch.manual_seed(cfg.semente)
     dispositivo, descricao = escolher(cfg.dispositivo)
 
     arquivo = pasta / CHECKPOINT
     passo, melhor, segundos_antes = 0, float("inf"), 0.0
-    if arquivo.exists():
-        salvo = torch.load(arquivo, map_location="cpu", weights_only=False)
+    salvo = carregar_checkpoint(pasta, avisar)
+    if salvo is not None:
         if salvo["config"]["vocab"] != tokenizador.tamanho:
             raise SystemExit(f"O checkpoint foi treinado com um tokenizador de {salvo['config']['vocab']} tokens e o "
                              f"atual tem {tokenizador.tamanho}. Apague {CHECKPOINT} e {inferencia.MODELO} em "
@@ -123,7 +216,6 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
         modelo.load_state_dict(salvo["modelo"])
         passo, melhor, segundos_antes = salvo["passo"], salvo["melhor"], salvo["segundos"]
     else:
-        salvo = None
         modelo = criar(cfg.tamanho, tokenizador.tamanho)
     modelo.to(dispositivo)
     otimizador = AdamW(modelo.parameters(), decaimento=cfg.decaimento)
@@ -179,11 +271,13 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
     tokens_por_segundo, taxa = 0.0, 0.0
     modelo.train()
     pedido_de_parada = pasta / "PARAR"  # o serviço cria este arquivo quando você diz "para o treino"
+    motivo = None
     try:
         while (meta is None or passo < meta) and (limite is None or time.time() < limite):
             if pedido_de_parada.exists():
                 pedido_de_parada.unlink(missing_ok=True)
                 avisar("parando a pedido: salvando o checkpoint...")
+                motivo = "pedido"
                 break
             if por_horas:
                 taxa = taxa_na_sessao(cfg, passo - passo_inicial, (time.time() - inicio) / (cfg.horas * 3600),
@@ -224,18 +318,27 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
                 marca, passo_da_marca = time.time(), passo
     except KeyboardInterrupt:
         avisar("interrompido: salvando o checkpoint antes de sair...")
+        motivo = "interrupcao"
     except RuntimeError as erro:
+        avisar(f"erro no passo {passo}: {erro!r}")
         if "memory" not in str(erro).lower():
             raise
         raise SystemExit(f"Faltou memória de vídeo com lote {cfg.lote}. Tente a metade do lote e o dobro "
                          f"de acúmulo: --lote {max(1, cfg.lote // 2)} --acumular {cfg.acumular * 2}") from None
-    if media is not None and passo % cfg.avaliar_cada != 0:
+    if motivo is None:
+        motivo = "meta" if meta is not None and passo >= meta else "tempo"
+    if motivo == "interrupcao":   # quem está sendo fechado tem poucos segundos: salva já, sem avaliar
+        salvar_checkpoint(arquivo, modelo, otimizador, passo, melhor, segundos_antes + time.time() - inicio)
+    elif media is not None and passo % cfg.avaliar_cada != 0:
         ponto_de_controle(media, tokens_por_segundo)
     if quadro:
         quadro.close()
-    return {"passo": passo, "melhor_validacao": melhor, "perda_treino": media,
+    duracao = time.time() - inicio
+    avisar(f"sessão acabou: {MOTIVOS[motivo]} | passo {passo} | {duracao / 60:.1f} min nesta sessão")
+    return {"passo": passo, "passo_inicial": passo_inicial, "melhor_validacao": melhor, "perda_treino": media,
             "parametros": modelo.numero_de_parametros(), "dispositivo": descricao,
-            "tokens_por_segundo": tokens_por_segundo, "config": asdict(cfg)}
+            "tokens_por_segundo": tokens_por_segundo, "motivo": motivo, "segundos": round(duracao, 1),
+            "horas_pedidas": cfg.horas, "config": asdict(cfg)}
 
 
 def medir(tamanho: str, vocab: int, lote: int, dispositivo_pedido: str = "auto", passos: int = 12) -> dict:
