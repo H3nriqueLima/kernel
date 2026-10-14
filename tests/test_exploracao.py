@@ -424,3 +424,20 @@ def test_o_que_e_prosa_e_o_que_e_enfeite():
         assert leitores.de_enfeite(Path(nome)), nome
     assert not leitores.de_enfeite(Path("licença do software da empresa.docx")) and not leitores.de_enfeite(Path("notas.txt"))
     assert leitores.DOCUMENTOS & leitores.CODIGO == set() and ".py" in leitores.CODIGO and ".pdf" in leitores.DOCUMENTOS
+
+
+def test_assuntos_que_saem_do_pc_nao_levam_nomes_nem_numeros(tmp_path):
+    from kernel.exploracao import Mapa
+
+    mapa = Mapa(tmp_path / "mapa.db")
+    for i, assunto in enumerate(["contabilidade, marcela, imposto", "marcela, contabilidade, nota2026",
+                                 "imposto, henrique, padaria", "padaria, contabilidade, fiscal"]):
+        caminho = tmp_path / f"a{i}.txt"
+        mapa.registrar_arquivo(caminho, 10, 1.0)
+        mapa.marcar(caminho, "lido", assunto)
+    # "Marcela" aparece nos arquivos com inicial maiúscula: é nome de alguém
+    mapa.anotar_nomes({"marcela": ("Marcela", 6, 0), "padaria": ("Padaria", 1, 5)}, str(tmp_path / "a0.txt"))
+    assert "marcela" in mapa.assuntos(10) and "nota2026" in mapa.assuntos(10)
+    publicos = mapa.assuntos_para_pesquisar(8, nunca=["Henrique", "fiscal"])
+    assert set(publicos) == {"contabilidade", "imposto", "padaria"}   # "padaria" é mais minúscula que maiúscula
+    mapa.fechar()

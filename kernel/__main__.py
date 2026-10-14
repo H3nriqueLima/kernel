@@ -101,6 +101,8 @@ def iniciar(args) -> int:
 
         for ip in enderecos_na_rede():
             print(f"no celular (mesma rede): http://{ip}:{cfg.nucleo.porta}/")
+        print("ATENÇÃO: o acesso pelo celular é HTTP, sem criptografia. Use só no Wi-Fi de casa; "
+              "quem não for da rede local é recusado.")
     if kernel.seguranca.modo_seguro:
         print(f"ATENÇÃO: modo seguro — {kernel.seguranca.motivo_modo_seguro}")
     if args.janela:

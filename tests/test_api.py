@@ -10,7 +10,7 @@ import urllib.request
 import pytest
 import uvicorn
 
-from kernel.interface.api import criar_app
+from kernel.interface.api import criar_app, ip_da_rede_local
 from kernel.nucleo import Kernel
 
 CODIGO = "codigo-de-teste"
@@ -24,7 +24,8 @@ def servidor(cfg):
     abertos = []
     cfg.mente.hora_do_diario = 25   # estes testes usam o relógio de verdade: às 23h o diário não pode entrar na conversa
     kernel = Kernel(cfg, lancar=abertos.append)
-    servidor = uvicorn.Server(uvicorn.Config(criar_app(kernel, CODIGO, eh_local=lambda p: p.headers.get("x-teste-remoto") != "1"), host="127.0.0.1", port=porta,
+    servidor = uvicorn.Server(uvicorn.Config(criar_app(kernel, CODIGO, eh_local=lambda p: p.headers.get("x-teste-remoto") != "1",
+                                                       da_rede_local=lambda p: p.headers.get("x-teste-internet") != "1"), host="127.0.0.1", port=porta,
                                              log_level="error"))
     kernel.ao_desligar = lambda: setattr(servidor, "should_exit", True)
     thread = threading.Thread(target=servidor.run, daemon=True)
@@ -40,11 +41,15 @@ def servidor(cfg):
     kernel.fechar()
 
 
-def chamar(servidor, caminho, corpo=None, codigo=CODIGO, host=None, remoto=False, metodo=None, bruto=False):
-    """``remoto=True`` faz o pedido parecer vindo de outro aparelho da rede (um celular)."""
+def chamar(servidor, caminho, corpo=None, codigo=CODIGO, host=None, remoto=False, metodo=None, bruto=False,
+           internet=False):
+    """``remoto=True`` faz o pedido parecer vindo de outro aparelho da rede (um celular);
+    ``internet=True``, de um aparelho de fora da rede de casa."""
     cabecalhos = {"Content-Type": "application/json"}
-    if remoto:
+    if remoto or internet:
         cabecalhos["X-Teste-Remoto"] = "1"
+    if internet:
+        cabecalhos["X-Teste-Internet"] = "1"
     if codigo:
         cabecalhos["X-Kernel-Codigo"] = codigo
     if host:
@@ -207,3 +212,29 @@ def test_texto_para_falar_encurta_listagens():
     assert texto_para_falar(listagem) == "C:\\x tem 16 itens:"
     longo = {"classe": "conhecimento", "texto": "Primeira frase. " * 60}
     assert len(texto_para_falar(longo)) <= 420 and texto_para_falar(longo).endswith(".")
+
+
+def test_so_a_rede_local_e_atendida():
+    for ip in ("192.168.0.5", "10.1.2.3", "172.20.0.9", "127.0.0.1", "::1", "fe80::1%12", "::ffff:192.168.0.7"):
+        assert ip_da_rede_local(ip), ip
+    for ip in ("8.8.8.8", "177.45.10.2", "2804:14c:1::5", "100.70.1.1", "::ffff:8.8.8.8", "lixo"):
+        assert not ip_da_rede_local(ip), ip
+
+
+def test_quem_vem_da_internet_e_recusado_mesmo_pareado(servidor):
+    codigo = json.loads(chamar(servidor, "/api/celular/codigo", {})[1])["codigo"]
+    chave = json.loads(chamar(servidor, "/api/parear", {"codigo": codigo, "nome": "celular"}, codigo=None, remoto=True)[1])["chave"]
+    assert chamar(servidor, "/api/estado", codigo=chave, remoto=True)[0] == 200
+    assert chamar(servidor, "/api/estado", codigo=chave, internet=True)[0] == 403   # a mesma chave, de fora: não
+    assert chamar(servidor, "/", codigo=None, internet=True)[0] == 403              # nem a página
+    assert chamar(servidor, "/api/parear", {"codigo": "123456", "nome": "x"}, codigo=None, internet=True)[0] == 403
+
+
+def test_registro_e_diario_so_no_proprio_pc(servidor):
+    codigo = json.loads(chamar(servidor, "/api/celular/codigo", {})[1])["codigo"]
+    chave = json.loads(chamar(servidor, "/api/parear", {"codigo": codigo, "nome": "celular"}, codigo=None, remoto=True)[1])["chave"]
+    assert chamar(servidor, "/api/registro", codigo=chave, remoto=True)[0] == 403
+    assert chamar(servidor, "/api/diario", codigo=chave, remoto=True)[0] == 403
+    assert chamar(servidor, "/api/diario", {}, codigo=chave, remoto=True)[0] == 403
+    assert chamar(servidor, "/api/registro")[0] == 200 and chamar(servidor, "/api/diario")[0] == 200
+    assert chamar(servidor, "/api/mensagens", codigo=chave, remoto=True)[0] == 200   # a conversa continua no celular

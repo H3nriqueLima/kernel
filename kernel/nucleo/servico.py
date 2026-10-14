@@ -137,7 +137,8 @@ class Kernel:
         # os testes passam um ``transporte`` de mentira: nenhum teste sai para a internet de verdade
         self.pesquisador = Pesquisador(cfg, self.seguranca, self.memoria, self.registro, relogio,
                                        transporte=transporte, resolver=resolver,
-                                       assuntos_dos_arquivos=lambda: self.mapa.assuntos(8),
+                                       assuntos_dos_arquivos=lambda: self.mapa.assuntos_para_pesquisar(
+                                           8, nunca=[*cfg.internet.nunca_pesquisar, *cfg.usuario.split()]),
                                        assuntos_das_conversas=self._assuntos_das_perguntas)
         self._perguntas_lidas = (0.0, [])        # (quando, assuntos): o registro do dia não é relido a toda hora
         self.pesquisador.navegador.interromper = self._largar_a_exploracao

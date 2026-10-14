@@ -265,6 +265,25 @@ class Mapa:
         contagem = Counter(palavra for (assunto,) in linhas for palavra in assunto.split(", "))
         return [palavra for palavra, _ in contagem.most_common(n)]
 
+    def assuntos_para_pesquisar(self, n: int = 8, nunca=()) -> list[str]:
+        """Os assuntos dos arquivos que podem sair do PC como termo de busca.
+
+        Fica de fora o que tem cara de dado pessoal: um nome próprio visto nos seus arquivos
+        (mais vezes com inicial maiúscula do que sem: nome de gente, de empresa, de cliente),
+        palavra com número ou com menos de 4 letras, e as palavras de ``nunca``.
+        """
+        with self._trava:
+            nomes = {termo for (termo,) in self._bd.execute("SELECT termo FROM nomes WHERE proprias >= comuns")}
+        bloqueadas = {normalizar(palavra) for palavra in nunca}
+        escolhidos = []
+        for palavra in self.assuntos(n * 4):
+            if len(palavra) < 4 or not palavra.isalpha() or palavra in nomes or palavra in bloqueadas:
+                continue
+            escolhidos.append(palavra)
+            if len(escolhidos) == n:
+                break
+        return escolhidos
+
     def esquecer_fora_de(self, raizes: list[Path]) -> list[str]:
         """Você tirou uma pasta da lista: ele esquece o que viu lá. Devolve os arquivos esquecidos."""
         def dentro(caminho: str) -> bool:

@@ -73,6 +73,9 @@ class ConfigInternet:
     buscador: bool = True           # além da Wikipédia, usa um buscador e lê as páginas que achar
     # True = também pesquisa os assuntos que viu nos seus arquivos. As palavras pesquisadas saem do PC.
     assuntos_dos_arquivos: bool = False
+    # Palavras que nunca saem do PC como busca (nomes de clientes, de empresas...). O seu nome já não sai, e
+    # nome próprio visto nos seus arquivos, palavra com número e palavra curta também não.
+    nunca_pesquisar: list[str] = field(default_factory=list)
     interesses: list[str] = field(default_factory=list)       # assuntos que você quer que ele estude sozinho
     sites_proibidos: list[str] = field(default_factory=list)  # sites que ele nunca abre ("exemplo.com")
     paginas_por_hora: int = 30          # teto de pedidos por hora quando ele pesquisa por conta própria

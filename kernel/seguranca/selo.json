@@ -3,8 +3,8 @@
   "seguranca/aparelhos.py": "44906824f688b814843148af7e220954c77797fb0c2d2df261585b4b63ed4faa",
   "seguranca/integridade.py": "7cca6d98567967a208875908b270a8183134b16ca3104c94768f7642b1d74024",
   "seguranca/permissoes.py": "2d01b931644757be57f8e7f03be673ad9960c36db2267427ebc17a28fc3e4ca2",
-  "interface/api.py": "4c5f27b20fe8ba89badbeb88d5861f70eee449b6363dbbf0ed537755afc93c25",
-  "nucleo/servico.py": "11b98e3c6cd4d78154af50447c748f30983508087ac6767f489c427224abc534",
+  "interface/api.py": "5d9a8b4230429a4c811f5a970e84a779df6f8cb7c80f9c44fa21676c3d7c924d",
+  "nucleo/servico.py": "54aa695ca6f2dfa6c4e3d5012a8d0502c5997b2966b2c23e3c92da8c10f9f66e",
   "nucleo/reflexos.py": "2d915ad4e49122458175bf1991b370ac3f71fb7567575c46ec453eba8be0d7a8",
   "nucleo/estudo.py": "bf4b9491da61c057b5175653f6672bad4b944e208c962a52e2d1c4c8290b66f7",
   "maos/__init__.py": "452b2abd2605c6fa98d7c1164f30422d6f97b212f39e02ad784d98574e4cb0d5",
@@ -17,6 +17,6 @@
   "exploracao/explorador.py": "8ddd759e298878a03806a586d15f3dd024d0221e8ba6409efdb9ef2374fe3857",
   "cerebro/treinar.py": "3524804c95f45928d6b4d055f755ac133e08ee26ece233ff6c2a6292ac42baf4",
   "copias.py": "0ecd0f4147e0ea3942dafb5afaaf3b059353c30de9e630db01b3ff6a562262b1",
-  "config.py": "3bc407d553a3821cbff9acc09c7a4eb275411840ff3865af7a41e97476179ff1",
-  "__main__.py": "bf36e0af35020e94604e4ebce0d105d21bf21ff964f931420ceab5a03e9d731f"
+  "config.py": "70debc27469af5cd58aff1d37d005fbbc6bb30e8735c9c13f62c6b8bba344c50",
+  "__main__.py": "422accb6b98ec15969539c08986ca6c43f90a929a6fae11422fad678e858eb8d"
 }

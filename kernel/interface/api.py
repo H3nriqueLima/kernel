@@ -1,21 +1,27 @@
 """A API local (FastAPI) que a janela de chat e o celular usam para falar com o núcleo.
 
-O porteiro tem três regras:
+O porteiro tem quatro regras:
 
 - o cabeçalho ``Host`` tem de ser desta máquina (o próprio PC ou o IP dele na rede);
+- quem não é o próprio PC tem de estar na rede local (endereço privado, como
+  192.168.x.x). Se um dia a porta for aberta para a internet no roteador, quem
+  vier de fora é recusado antes de qualquer outra coisa;
 - no próprio PC, toda chamada a ``/api`` tem de trazer o código que a página
   recebeu ao abrir. Sem isso, qualquer site aberto no seu navegador poderia
   mandar pedidos para ``127.0.0.1`` e clicar em "Permitir" no seu lugar;
 - de outro aparelho (o celular na rede local), só entra quem foi pareado e
   manda a chave que recebeu no pareamento. Parear, ver os aparelhos e
-  esquecê-los só se faz no próprio PC.
+  esquecê-los só se faz no próprio PC, e o registro e o diário também só se
+  leem nele (o registro mostra caminhos e trechos dos seus arquivos).
 
 Por padrão o serviço só atende em 127.0.0.1. Ele só aparece na rede local se
-você ligar ``[celular] ligado = true`` no kernel.toml.
+você ligar ``[celular] ligado = true`` no kernel.toml. A conversa com o celular
+é HTTP, sem criptografia: use só na rede de casa (veja docs/fase0/README.md).
 """
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import secrets
 import socket
 import time
@@ -32,6 +38,7 @@ from .. import NOME, VERSAO
 
 WEB = Path(__file__).with_name("web")
 _NESTE_PC = {"127.0.0.1", "::1", "localhost"}
+_SO_NO_PC = ("/api/celular", "/api/registro", "/api/diario")
 _FALA_MAXIMA = 420   # caracteres: ele lê o começo de respostas compridas, não a lista inteira
 
 
@@ -68,6 +75,17 @@ def enderecos_na_rede() -> list[str]:
     return sorted(ip for ip in ips if not ip.startswith("127."))
 
 
+def ip_da_rede_local(ip: str) -> bool:
+    """O endereço é desta rede (privado, como 192.168.x.x, ou do próprio PC)? Da internet, não."""
+    try:
+        endereco = ipaddress.ip_address(ip.split("%", 1)[0])
+    except ValueError:
+        return False
+    if endereco.version == 6 and endereco.ipv4_mapped:
+        endereco = endereco.ipv4_mapped
+    return endereco.is_private or endereco.is_loopback or endereco.is_link_local
+
+
 def texto_para_falar(mensagem: dict) -> str:
     """O que da mensagem vale a pena dizer em voz alta."""
     texto = mensagem["texto"]
@@ -79,9 +97,11 @@ def texto_para_falar(mensagem: dict) -> str:
     return texto
 
 
-def criar_app(kernel, codigo: str, eh_local=None) -> FastAPI:
-    """``eh_local(pedido)`` diz se o pedido veio do próprio PC (os testes trocam para simular um celular)."""
+def criar_app(kernel, codigo: str, eh_local=None, da_rede_local=None) -> FastAPI:
+    """``eh_local(pedido)`` diz se o pedido veio do próprio PC e ``da_rede_local(pedido)`` se veio da rede de
+    casa (os testes trocam os dois para simular um celular, ou alguém da internet)."""
     eh_local = eh_local or (lambda pedido: pedido.client is not None and pedido.client.host in _NESTE_PC)
+    da_rede_local = da_rede_local or (lambda pedido: pedido.client is not None and ip_da_rede_local(pedido.client.host))
     porta = kernel.cfg.nucleo.porta
     falas_prontas: dict[int, asyncio.Future] = {}
     anfitrioes = {"quando": 0.0, "nomes": set(_NESTE_PC)}
@@ -118,12 +138,14 @@ def criar_app(kernel, codigo: str, eh_local=None) -> FastAPI:
         caminho = pedido.url.path
         local = eh_local(pedido)
         pedido.state.local = local
+        if not local and not da_rede_local(pedido):
+            return await recusar(pedido, 403, "só atendo aparelhos da rede local")
         if caminho.startswith("/api/") and caminho not in ("/api/saude", "/api/parear"):
             chave = pedido.headers.get("x-kernel-codigo", "")
             do_pc = local and secrets.compare_digest(chave, codigo)
             if not (do_pc or kernel.aparelhos.reconhece(chave)):
                 return await recusar(pedido, 401, "código ausente ou errado")
-            if caminho.startswith("/api/celular") and not do_pc:
+            if caminho.startswith(_SO_NO_PC) and not do_pc:
                 return await recusar(pedido, 403, "isso só se faz no próprio PC")
         return await seguir(pedido)
 

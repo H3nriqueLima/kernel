@@ -330,7 +330,8 @@ async function desenharCelular() {
   $("gerar-codigo").hidden = !c.ligado;
   $("celular-texto").textContent = !c.ligado
     ? "Desligado. Para falar com ele pelo celular, ponha ligado = true em [celular] no kernel.toml e reinicie."
-    : c.enderecos.length ? `No celular, na mesma rede Wi-Fi, abra: ${c.enderecos.join("  ou  ")}`
+    : c.enderecos.length ? `No celular, na mesma rede Wi-Fi, abra: ${c.enderecos.join("  ou  ")}. `
+      + "A conexão não é criptografada: use só no Wi-Fi de casa, nunca numa rede pública."
     : "Este PC não parece estar numa rede local agora.";
   $("aparelhos").replaceChildren(...c.aparelhos.map((a) => {
     const item = document.createElement("li");
@@ -435,7 +436,8 @@ $("pausa").addEventListener("click", async () => {
 $("menu").addEventListener("click", () => {
   $("gaveta").hidden = false;
   desenharGaveta();
-  desenharRegistro().catch(() => {});
+  $("secao-registro").hidden = !window.KERNEL_LOCAL;   // o registro e o diário só se leem no próprio PC
+  if (window.KERNEL_LOCAL) desenharRegistro().catch(() => {});
   desenharCelular().catch(() => {});
 });
 $("fechar").addEventListener("click", () => ($("gaveta").hidden = true));

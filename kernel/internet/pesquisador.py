@@ -11,7 +11,9 @@ Um assunto entra na fila (``dados/internet.db``) por um destes caminhos:
   até dois passos de distância do que você pediu);
 - só se você ligar ``assuntos_dos_arquivos``: os assuntos que mais se repetem nos
   arquivos que ele leu. Fica desligado de fábrica porque a palavra pesquisada sai
-  do PC, e o que está nos seus arquivos pode ser de outras pessoas.
+  do PC, e o que está nos seus arquivos pode ser de outras pessoas. Mesmo ligado,
+  não saem nomes próprios vistos nos arquivos, palavras com número, o seu nome e
+  o que estiver em ``nunca_pesquisar`` (``Mapa.assuntos_para_pesquisar``).
 
 Pesquisar um assunto é:
 

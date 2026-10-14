@@ -49,6 +49,9 @@ interesses = []
 # false = ele NÃO pesquisa o que viu nos seus arquivos. Com true, os assuntos que mais se
 # repetem nos arquivos viram pesquisa, e essas palavras saem do PC para a Wikipédia e o buscador.
 assuntos_dos_arquivos = false
+# Mesmo com true, nunca saem: nomes próprios vistos nos arquivos, palavras com número e o seu nome.
+# Acrescente aqui outras palavras que não podem sair (nomes de clientes, de empresas...).
+nunca_pesquisar = []
 
 sites_proibidos = []      # sites que ele nunca abre. Exemplo: ["exemplo.com"]
 paginas_por_hora = 30     # teto de pedidos por hora quando ele pesquisa sozinho
