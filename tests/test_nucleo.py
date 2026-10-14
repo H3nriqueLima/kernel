@@ -185,3 +185,8 @@ def test_defeito_ao_tratar_a_mensagem_vira_aviso_e_nao_erro(kernel, monkeypatch)
     assert "erro interno" in falas(kernel)[-1]
     erros = [e for e in kernel.registro.ultimos(10) if e["tipo"] == "erro"]
     assert erros and "defeito de mentira" in erros[-1]["erro"]
+
+
+def test_bancos_do_servico_em_modo_wal(kernel):
+    for banco in (kernel.memoria, kernel.mapa, kernel.pesquisador):
+        assert banco._bd.execute("PRAGMA journal_mode").fetchone()[0] == "wal", type(banco).__name__

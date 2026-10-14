@@ -13,13 +13,13 @@ explorando; a origem é o caminho do arquivo).
 """
 from __future__ import annotations
 
-import sqlite3
 import threading
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from .. import bancos
 from . import bm25
 from .texto import normalizar, termos
 
@@ -70,7 +70,7 @@ class Memoria:
     def __init__(self, arquivo: Path | str, relogio=datetime.now):
         self._relogio = relogio
         self._trava = threading.RLock()
-        self._bd = sqlite3.connect(str(arquivo), check_same_thread=False)
+        self._bd = bancos.abrir(arquivo)
         self._bd.executescript(_ESQUEMA)
 
     def fechar(self) -> None:

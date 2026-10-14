@@ -28,12 +28,12 @@ ordem: nenhuma frase lida numa página vira comando para as mãos dele.
 from __future__ import annotations
 
 import re
-import sqlite3
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import urlsplit
 
+from .. import bancos
 from ..conhecimento.resumo import resumir
 from ..exploracao.leitores import pedacos
 from ..memoria.texto import normalizar, termos
@@ -159,7 +159,7 @@ class Pesquisador:
         self._assuntos_dos_arquivos = assuntos_dos_arquivos or (lambda: [])
         self._assuntos_das_conversas = assuntos_das_conversas or (lambda: [])
         self._trava = threading.RLock()
-        self._bd = sqlite3.connect(str(cfg.dados / "internet.db"), check_same_thread=False)
+        self._bd = bancos.abrir(cfg.dados / "internet.db")
         self._bd.executescript(_ESQUEMA)
         if "resumo" not in [coluna[1] for coluna in self._bd.execute("PRAGMA table_info(assuntos)")]:
             self._bd.execute("ALTER TABLE assuntos ADD COLUMN resumo TEXT NOT NULL DEFAULT ''")   # banco de antes da v0.5

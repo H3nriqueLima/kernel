@@ -9,12 +9,12 @@ Três tabelas num arquivo SQLite (``dados/mapa.db``):
 """
 from __future__ import annotations
 
-import sqlite3
 import threading
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
+from .. import bancos
 from ..memoria.texto import normalizar, termos
 
 _ESQUEMA = """
@@ -56,7 +56,7 @@ class Mapa:
     def __init__(self, arquivo: Path | str, relogio=datetime.now):
         self._relogio = relogio
         self._trava = threading.RLock()
-        self._bd = sqlite3.connect(str(arquivo), check_same_thread=False)
+        self._bd = bancos.abrir(arquivo)
         self._bd.executescript(_ESQUEMA)
         self._em_lote = 0
         self._por_gravar = 0

@@ -70,3 +70,26 @@ def test_organizar_apaga_repetidas(tmp_path):
     assert m.por_organizar() == 0
     assert m.contar()["total"] == 2
     assert len(m.buscar("pão")) == 1  # o índice também foi limpo
+
+
+def test_leitor_de_fora_nao_trava_quem_grava(tmp_path):
+    """Um script lendo o banco (ou uma cópia de segurança) não pode fazer o serviço esperar 5 s e falhar."""
+    import sqlite3
+    import time
+
+    memoria = Memoria(tmp_path / "kernel.db")
+    memoria.guardar("A reunião com o cliente é na sexta.")
+    assert memoria._bd.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+    leitor = sqlite3.connect(str(tmp_path / "kernel.db"))
+    leitor.execute("BEGIN")
+    assert leitor.execute("SELECT COUNT(*) FROM memorias").fetchone()[0] == 1   # leitura aberta, segurando o banco
+    try:
+        t0 = time.time()
+        memoria.guardar("O relatório sai na segunda.")
+        assert time.time() - t0 < 1.0
+        assert leitor.execute("SELECT COUNT(*) FROM memorias").fetchone()[0] == 1   # o leitor vê o seu retrato
+    finally:
+        leitor.rollback()
+        leitor.close()
+    assert memoria._bd.execute("SELECT COUNT(*) FROM memorias").fetchone()[0] == 2
+    memoria.fechar()
