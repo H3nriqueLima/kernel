@@ -135,27 +135,47 @@ def test_o_selo_do_projeto_esta_integro():
     assert integro, f"rode 'python -m kernel selar' depois de revisar: {mudancas}"
 
 
-def test_selo_percebe_alteracao(tmp_path, monkeypatch):
-    copia = tmp_path / "seguranca"
-    shutil.copytree(integridade.PASTA, copia)
-    monkeypatch.setattr(integridade, "PASTA", copia)
-    monkeypatch.setattr(integridade, "SELO", copia / "selo.json")
+def _pacote_copiado(tmp_path, monkeypatch):
+    """Uma cópia do pacote kernel/ para mexer à vontade, com o selo apontando para ela."""
+    copia = tmp_path / "kernel"
+    shutil.copytree(integridade.PACOTE, copia, ignore=shutil.ignore_patterns("__pycache__", "web"))
+    monkeypatch.setattr(integridade, "PACOTE", copia)
+    monkeypatch.setattr(integridade, "SELO", copia / "seguranca" / "selo.json")
     integridade.selar()
     assert integridade.verificar() == (True, [])
-    with open(copia / "permissoes.py", "a", encoding="utf-8") as f:
+    return copia
+
+
+def test_selo_percebe_alteracao(tmp_path, monkeypatch):
+    copia = _pacote_copiado(tmp_path, monkeypatch)
+    with open(copia / "seguranca" / "permissoes.py", "a", encoding="utf-8") as f:
         f.write("\n# afrouxando o freio\n")
-    (copia / "atalho.py").write_text("x = 1\n")
+    (copia / "seguranca" / "atalho.py").write_text("x = 1\n")
     integro, mudancas = integridade.verificar()
     assert not integro
-    assert "alterado: permissoes.py" in mudancas and "novo: atalho.py" in mudancas
+    assert "alterado: seguranca/permissoes.py" in mudancas and "novo: seguranca/atalho.py" in mudancas
+
+
+def test_selo_cobre_os_componentes_criticos(tmp_path, monkeypatch):
+    """A autenticação, o freio, as ferramentas e a porta da internet também são selados, não só seguranca/."""
+    selados = set(integridade.impressoes())
+    for critico in ("interface/api.py", "nucleo/servico.py", "nucleo/reflexos.py", "nucleo/estudo.py",
+                    "maos/abrir_programa.py", "internet/rede.py", "exploracao/explorador.py", "cerebro/treinar.py",
+                    "copias.py", "config.py", "__main__.py", "seguranca/permissoes.py"):
+        assert critico in selados, critico
+
+    copia = _pacote_copiado(tmp_path, monkeypatch)
+    with open(copia / "interface" / "api.py", "a", encoding="utf-8") as f:
+        f.write("\n# porteiro sem conferir o código\n")
+    (copia / "maos" / "apagar_arquivo.py").write_text("x = 1\n")   # uma ferramenta nova também dispara
+    (copia / "mente" / "diario.py").write_text("# o diário não aplica regras: fica fora do selo\n")
+    integro, mudancas = integridade.verificar()
+    assert not integro
+    assert sorted(mudancas) == ["alterado: interface/api.py", "novo: maos/apagar_arquivo.py"]
 
 
 def test_selo_ignora_troca_de_fim_de_linha(tmp_path, monkeypatch):
-    copia = tmp_path / "seguranca"
-    shutil.copytree(integridade.PASTA, copia)
-    monkeypatch.setattr(integridade, "PASTA", copia)
-    monkeypatch.setattr(integridade, "SELO", copia / "selo.json")
-    integridade.selar()
-    arquivo = copia / "permissoes.py"
+    copia = _pacote_copiado(tmp_path, monkeypatch)
+    arquivo = copia / "seguranca" / "permissoes.py"
     arquivo.write_bytes(arquivo.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
     assert integridade.verificar()[0]

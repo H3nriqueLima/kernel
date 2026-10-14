@@ -190,3 +190,17 @@ def test_defeito_ao_tratar_a_mensagem_vira_aviso_e_nao_erro(kernel, monkeypatch)
 def test_bancos_do_servico_em_modo_wal(kernel):
     for banco in (kernel.memoria, kernel.mapa, kernel.pesquisador):
         assert banco._bd.execute("PRAGMA journal_mode").fetchone()[0] == "wal", type(banco).__name__
+
+
+def test_codigo_alterado_com_o_servico_ligado_liga_o_modo_seguro(kernel, monkeypatch):
+    """O selo é conferido de 10 em 10 minutos, não só na partida."""
+    assert not kernel.seguranca.modo_seguro
+    monkeypatch.setattr(integridade, "verificar", lambda: (False, ["alterado: interface/api.py"]))
+    kernel.volta(5)                                    # menos de 10 minutos depois da partida: não confere
+    assert not kernel.seguranca.modo_seguro
+    kernel._conferiu_selo -= 601
+    assert kernel.volta(5) == "sem autonomia"
+    assert kernel.seguranca.modo_seguro and "interface/api.py" in kernel.seguranca.motivo_modo_seguro
+    assert "Entrei em modo seguro" in falas(kernel)[-1]
+    asyncio.run(kernel.receber("abre a calculadora"))
+    assert "modo seguro" in falas(kernel)[-1] and kernel.seguranca.pendentes() == []

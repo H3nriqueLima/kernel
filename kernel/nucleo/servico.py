@@ -54,6 +54,7 @@ _TIPOS_DE_ARQUIVO = {"planilha": "xlsx", "planilhas": "xlsx", "pdfs": "pdf", "do
 _DESISTENCIAS = {"nao sei", "deixa", "deixa pra la", "esquece", "nada", "depois", "nao importa", "pula"}
 _MINUTOS_DE_ESPERA_DA_PERGUNTA = 30
 _SEGUNDOS_ENTRE_PULSOS = 600
+_SEGUNDOS_ENTRE_CONFERENCIAS_DO_SELO = 600
 _SOSSEGO_PARA_EXPLORAR = 30   # segundos sem você falar antes de ele sair explorando
 _VOLTAS_POR_FOLEGO = 20
 _CUSTO_DE_PESQUISAR = 0.15    # curiosidade gasta em cada assunto pesquisado na internet
@@ -101,6 +102,7 @@ class Kernel:
         integro, mudancas = integridade.verificar()
         if not integro:
             self.seguranca.entrar_em_modo_seguro("o código de segurança mudou: " + "; ".join(mudancas))
+        self._conferiu_selo = relogio().timestamp()
         self.aparelhos = Aparelhos(cfg.dados / "aparelhos.json", self.registro)
         self.estudo = Estudo(cfg, self.registro, self._estudo_terminou)
         self.maos = Maos(self.seguranca, self.registro, [
@@ -707,6 +709,7 @@ class Kernel:
         if (self.cfg.dados / "DESLIGAR").exists():  # o freio funciona mesmo sem a janela de chat
             self.desligar("arquivo DESLIGAR")
             return "desligar"
+        self._conferir_selo(agora)
 
         # 1. Perceber
         percepcao = Percepcao(
@@ -768,6 +771,21 @@ class Kernel:
                 self._salvar_estado()
                 return decisao
         return "nada"
+
+    def _conferir_selo(self, agora: datetime) -> None:
+        """De 10 em 10 minutos, não só na partida: o código que aplica as regras não pode mudar com ele ligado."""
+        if self.seguranca.modo_seguro or agora.timestamp() - self._conferiu_selo < _SEGUNDOS_ENTRE_CONFERENCIAS_DO_SELO:
+            return
+        self._conferiu_selo = agora.timestamp()
+        integro, mudancas = integridade.verificar()
+        if integro:
+            return
+        self.seguranca.entrar_em_modo_seguro("o código de segurança mudou com o serviço ligado: " + "; ".join(mudancas))
+        self._folego = 0   # larga a exploração em curso
+        self.dizer("ATENÇÃO: o código que aplica as minhas regras mudou enquanto eu estava ligado ("
+                   + "; ".join(mudancas[:3]) + ("; ..." if len(mudancas) > 3 else "") + "). Entrei em modo seguro: "
+                   "mãos e autonomia desligadas. Revise a mudança, rode python -m kernel selar e me reinicie.",
+                   classe="aviso")
 
     def _copia_diaria(self, agora: datetime) -> None:
         """Uma cópia de segurança por dia (dados/copias). Falhou? Tenta de novo dali a uma hora."""
