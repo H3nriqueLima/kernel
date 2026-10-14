@@ -152,8 +152,15 @@ class ConfigMente:
 
 
 @dataclass
+class ConfigCopias:
+    diaria: bool = True   # o próprio serviço faz uma cópia de segurança por dia (dados/copias)
+    manter: int = 7       # quantas cópias guardar; as mais antigas são apagadas
+
+
+@dataclass
 class Config:
     raiz: Path = RAIZ
+    arquivo: Path | None = None   # o kernel.toml lido (None se não havia)
     dados: Path = RAIZ / "dados"
     usuario: str = "Henrique"
     nucleo: ConfigNucleo = field(default_factory=ConfigNucleo)
@@ -166,6 +173,7 @@ class Config:
     cerebro: ConfigCerebro = field(default_factory=ConfigCerebro)
     ouvidos: ConfigOuvidos = field(default_factory=ConfigOuvidos)
     mente: ConfigMente = field(default_factory=ConfigMente)
+    copias: ConfigCopias = field(default_factory=ConfigCopias)
 
     def pasta(self, *partes: str) -> Path:
         """Subpasta de ``dados`` (criada se não existir)."""
@@ -186,7 +194,7 @@ class Config:
 
 
 def _aplicar(alvo, valores: dict, onde: str) -> None:
-    conhecidos = {f.name for f in fields(alvo)} - {"raiz"}
+    conhecidos = {f.name for f in fields(alvo)} - {"raiz", "arquivo"}
     for chave, valor in valores.items():
         if chave not in conhecidos:
             raise ValueError(f"{onde}: opção desconhecida '{chave}'")
@@ -210,6 +218,7 @@ def carregar(arquivo: Path | None = None, dados: Path | None = None) -> Config:
     if arquivo.exists():
         with open(arquivo, "rb") as f:
             _aplicar(cfg, tomllib.load(f), arquivo.name)
+        cfg.arquivo = arquivo
     dados = dados or os.environ.get("KERNEL_DADOS")
     if dados:
         cfg.dados = Path(dados)

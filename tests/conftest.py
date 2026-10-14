@@ -44,6 +44,7 @@ def cfg(tmp_path, classificador_treinado):
     cfg.maos.atalhos_menu_iniciar = False  # os testes não dependem do que está instalado no PC
     cfg.ouvidos.ativo = False
     cfg.exploracao.ligada = False  # cada teste liga a exploração quando quer testá-la
+    cfg.copias.diaria = False  # a cópia diária tem o próprio teste
     shutil.copy(classificador_treinado, cfg.pasta("comandos") / "modelo.npz")
     return cfg
 

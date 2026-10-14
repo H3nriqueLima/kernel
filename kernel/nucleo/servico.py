@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .. import NOME, NOME_COMPLETO, VERSAO, comandos
+from .. import NOME, NOME_COMPLETO, VERSAO, comandos, copias
 from ..cerebro import inferencia
 from ..comandos import calculo, extrair
 from ..conhecimento import Enciclopedia, assunto_da_pergunta
@@ -159,6 +159,7 @@ class Kernel:
         self._proximo_id = 1
         self.ultima_fala = relogio()
         self._ultimo_pulso = 0.0
+        self._tentou_copia = 0.0
         self._ja_explicou_cerebro = False
         self._parar: asyncio.Event | None = None
         self._laco_principal: asyncio.AbstractEventLoop | None = None
@@ -725,6 +726,7 @@ class Kernel:
             self.diario.escrever(dia)
             if dia == agora.date():
                 self.dizer("Escrevi no diário sobre o dia de hoje.", classe="iniciativa")
+        self._copia_diaria(agora)
 
         if self.seguranca.pausado:
             self.atividade = "pausado"
@@ -766,6 +768,24 @@ class Kernel:
                 self._salvar_estado()
                 return decisao
         return "nada"
+
+    def _copia_diaria(self, agora: datetime) -> None:
+        """Uma cópia de segurança por dia (dados/copias). Falhou? Tenta de novo dali a uma hora."""
+        if not self.cfg.copias.diaria or agora.timestamp() - self._tentou_copia < 3600:
+            return
+        if not copias.precisa_da_diaria(self.cfg, agora):
+            return
+        self._tentou_copia = agora.timestamp()
+        # durante um treino o checkpoint é regravado a toda hora: o cérebro fica para a cópia de amanhã
+        treinando = self.estudo.ocupado and (self.estudo.trabalho or "").startswith("treinar")
+        try:
+            pasta = copias.fazer(self.cfg, motivo="diaria", com_cerebro=not treinando,
+                                 manter=self.cfg.copias.manter, relogio=self._relogio)
+            self.registro.anotar("copia", evento="feita", nome=pasta.name, cerebro=not treinando)
+            self.registro.compactar_antigos()   # o registro só cresce: os dias antigos vão para .gz
+        except Exception as erro:   # disco cheio, banco estragado...: avisa, e o serviço segue
+            self.registro.anotar("copia", evento="falhou", erro=repr(erro))
+            self.dizer(f"Não consegui fazer a cópia de segurança de hoje: {erro}", classe="aviso")
 
     # ------------------------------------------------------------- curiosidade
     def _presente(self, agora: datetime) -> bool:

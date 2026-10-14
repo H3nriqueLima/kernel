@@ -105,6 +105,12 @@ palavra = "kernel"     # a palavra que você grava para chamar por ele
 limiar = 0.85
 microfone = -1         # -1 = o padrão do Windows (veja: python -m kernel ouvidos microfones)
 
+[copias]
+# Uma cópia de segurança por dia em dados/copias (memória, mapa, estado, diário e cérebro).
+# Para restaurar: python -m kernel copia listar / restaurar NOME (com o serviço desligado).
+diaria = true
+manter = 7
+
 [mente]
 limiar_impulso = 0.6
 curiosidade_por_minuto = 0.04

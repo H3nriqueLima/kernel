@@ -69,7 +69,10 @@ def iniciar(args) -> int:
         return 0
 
     if sys.stdout is None or sys.stderr is None:  # pythonw: sem console, então escrevemos num arquivo
-        sys.stdout = sys.stderr = open(cfg.dados / "servico.log", "a", encoding="utf-8", buffering=1)
+        diario_do_servico = cfg.dados / "servico.log"
+        if diario_do_servico.exists() and diario_do_servico.stat().st_size > 5_000_000:
+            diario_do_servico.replace(cfg.dados / "servico.log.1")   # guarda o anterior; não cresce sem fim
+        sys.stdout = sys.stderr = open(diario_do_servico, "a", encoding="utf-8", buffering=1)
 
     import uvicorn
 
@@ -423,6 +426,46 @@ def cerebro(args) -> int:
     return 0
 
 
+# ================================================================== cópias
+def copia(args) -> int:
+    from . import copias
+
+    cfg = carregar()
+    if args.acao == "fazer":
+        pasta = copias.fazer(cfg, motivo="manual", manter=cfg.copias.manter)
+        print(f"cópia feita: {pasta}")
+    elif args.acao == "listar":
+        lista = copias.listar(cfg)
+        if not lista:
+            print("Nenhuma cópia ainda. Faça uma com: python -m kernel copia fazer")
+        for c in lista:
+            print(f"{c['nome']:<40} {c['bytes'] / 1e6:8.1f} MB  {c['arquivos']:4d} arquivos  cérebro: {c['cerebro']}")
+    elif args.acao == "conferir":
+        nomes = [args.nome] if args.nome else [c["nome"] for c in copias.listar(cfg)]
+        ruins = 0
+        for nome in nomes:
+            problemas = copias.conferir(copias.pasta_das_copias(cfg) / nome)
+            ruins += bool(problemas)
+            print(f"{nome}: {'inteira' if not problemas else '; '.join(problemas)}")
+        return 1 if ruins else 0
+    elif args.acao in ("restaurar", "compactar"):
+        if _saude(cfg.nucleo.porta):
+            print(f"Desligue o {NOME} antes (python -m kernel desligar): ele não pode estar usando os bancos.")
+            return 1
+        if args.acao == "compactar":
+            for banco, (antes, depois) in copias.compactar(cfg).items():
+                print(f"{banco}: {antes / 1e6:.1f} MB -> {depois / 1e6:.1f} MB")
+            return 0
+        try:
+            resultado = copias.restaurar(cfg, args.nome)
+        except copias.ErroCopia as erro:
+            print(f"Não restaurei nada: {erro}")
+            return 1
+        print(f"restaurado: {', '.join(resultado['restaurados'])}")
+        print(f"O estado de antes ficou na cópia {resultado['seguranca']} (para desfazer, restaure ela).")
+    return 0
+
+
 # ================================================================== ouvidos
 def ouvidos(args) -> int:
     cfg = carregar()
@@ -567,6 +610,15 @@ def main(argv: list[str] | None = None) -> int:
     acoes.add_parser("treinar")
     acoes.add_parser("escutar")
     p.set_defaults(funcao=ouvidos)
+
+    p = sub.add_parser("copia", help="cópias de segurança: fazer, listar, conferir, restaurar, compactar")
+    acoes = p.add_subparsers(dest="acao", required=True)
+    acoes.add_parser("fazer", help="faz uma cópia agora (pode ser com o serviço ligado)")
+    acoes.add_parser("listar", help="as cópias guardadas, da mais nova para a mais antiga")
+    acoes.add_parser("conferir", help="confere as impressões digitais e os bancos").add_argument("nome", nargs="?")
+    acoes.add_parser("restaurar", help="volta os dados para os de uma cópia (serviço desligado)").add_argument("nome")
+    acoes.add_parser("compactar", help="VACUUM nos bancos (serviço desligado)")
+    p.set_defaults(funcao=copia)
 
     args = analisador.parse_args(argv)
     return args.funcao(args)
