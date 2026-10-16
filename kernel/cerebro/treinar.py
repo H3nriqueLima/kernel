@@ -95,7 +95,7 @@ class ConfigTreino:
     taxa: float = 6e-4
     aquecimento: int = 200         # passos subindo a taxa do zero
     decaimento: float = 0.1
-    corte_gradiente: float = 1.0
+    corte_gradiente: float = 3.0     # acima da norma típica (~1,8): só corta picos, que é para isso que serve
     avaliar_cada: int = 500
     lotes_de_avaliacao: int = 20
     dispositivo: str = "auto"
