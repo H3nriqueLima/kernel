@@ -282,6 +282,13 @@ python -m kernel cerebro protocolo                 a medida reprodutível: perda
 
 **Como medir progresso de verdade.** Use o `protocolo`, não a perda que aparece no treino. Ele mede o cérebro em conjuntos fixos (`dados/cerebro/avaliacao/`) de texto que ele nunca leu, sempre do mesmo jeito: o mesmo modelo dá os mesmos números. A régua de hoje é **3,094 nats por token no teste** (1,379 bits por byte), o modelo do passo 46.000. Uma perda menor não garante texto com sentido: o protocolo guarda os textos gerados para conferir. O diagnóstico completo está em [docs/fase1/diagnostico.md](docs/fase1/diagnostico.md).
 
+**Como as sessões se emendam (desde a Fase 1.5).**
+- **Sem reaquecer.** A primeira sessão sobe a taxa de aprendizado e desce em cosseno. As seguintes continuam com a taxa baixa e constante em que a primeira terminou. Reaquecer a cada sessão custava ~0,02 no teste.
+- **Sem repetir.** O treino lê o corpus inteiro sem repetir, em ordem embaralhada por documento, e guarda no checkpoint até onde leu. Isso usa ~1,5 GB a mais de RAM durante o treino.
+- **Parar sozinho.** `--parar-se-estagnar 6` encerra a sessão quando a validação para de melhorar.
+
+O ganho de cada ajuste está em [docs/fase15/relatorio.md](docs/fase15/relatorio.md).
+
 Velocidade medida neste PC (i5-2400, 12 GB, RX 570 4 GB): o `mini` (3,5 mi de parâmetros) treina a ~21 milhões de tokens por hora na placa, cerca de 7 a 8 horas para a meta padrão; o `pequeno` (17 mi) a ~5,5 milhões por hora, cerca de 8 madrugadas.
 
 A palavra de ativação (`python -m kernel ouvidos gravar ...`) precisa de um microfone no PC.

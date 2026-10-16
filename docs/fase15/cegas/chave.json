@@ -1,0 +1,242 @@
+{
+ "T01": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "O Brasil é"
+ },
+ "T02": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "A língua portuguesa"
+ },
+ "T03": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "A língua portuguesa"
+ },
+ "T04": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "A água é uma substância"
+ },
+ "T05": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "O futebol é um esporte"
+ },
+ "T06": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "A água é uma substância"
+ },
+ "T07": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "A cidade de São Paulo"
+ },
+ "T08": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "Um computador é uma máquina"
+ },
+ "T09": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "A língua portuguesa"
+ },
+ "T10": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T11": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "O Sol é a estrela"
+ },
+ "T12": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "O futebol é um esporte"
+ },
+ "T13": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "Albert Einstein foi um"
+ },
+ "T14": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "O futebol é um esporte"
+ },
+ "T15": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T16": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "O Sol é a estrela"
+ },
+ "T17": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "Albert Einstein foi um"
+ },
+ "T18": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T19": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "A cidade de São Paulo"
+ },
+ "T20": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T21": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "Um computador é uma máquina"
+ },
+ "T22": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "Um computador é uma máquina"
+ },
+ "T23": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "A água é uma substância"
+ },
+ "T24": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T25": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T26": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "A língua portuguesa"
+ },
+ "T27": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "A cidade de São Paulo"
+ },
+ "T28": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T29": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T30": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "A água é uma substância"
+ },
+ "T31": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T32": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "O Sol é a estrela"
+ },
+ "T33": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "O Brasil é"
+ },
+ "T34": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "O Brasil é"
+ },
+ "T35": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "A cidade de São Paulo"
+ },
+ "T36": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "Um computador é uma máquina"
+ },
+ "T37": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "O futebol é um esporte"
+ },
+ "T38": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T39": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T40": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T41": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "Albert Einstein foi um"
+ },
+ "T42": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T43": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T44": {
+  "modelo": "base",
+  "modo": "sorteio",
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T45": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "O Sol é a estrela"
+ },
+ "T46": {
+  "modelo": "teto",
+  "modo": "sorteio",
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T47": {
+  "modelo": "teto",
+  "modo": "servico",
+  "comeco": "Albert Einstein foi um"
+ },
+ "T48": {
+  "modelo": "base",
+  "modo": "servico",
+  "comeco": "O Brasil é"
+ }
+}

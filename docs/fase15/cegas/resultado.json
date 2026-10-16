@@ -1,0 +1,38 @@
+{
+ "base": {
+  "textos": 24,
+  "portugues": {
+   "pontos": 34,
+   "de": 48,
+   "porcentagem": 70.8
+  },
+  "assunto": {
+   "pontos": 17,
+   "de": 48,
+   "porcentagem": 35.4
+  },
+  "coerencia": {
+   "pontos": 3,
+   "de": 48,
+   "porcentagem": 6.2
+  }
+ },
+ "teto": {
+  "textos": 24,
+  "portugues": {
+   "pontos": 28,
+   "de": 48,
+   "porcentagem": 58.3
+  },
+  "assunto": {
+   "pontos": 17,
+   "de": 48,
+   "porcentagem": 35.4
+  },
+  "coerencia": {
+   "pontos": 4,
+   "de": 48,
+   "porcentagem": 8.3
+  }
+ }
+}
