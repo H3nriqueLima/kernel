@@ -94,6 +94,23 @@ class Estudo:
         (self.cfg.pasta("cerebro") / ARQUIVO_DE_PARADA).write_text("parar\n")  # o treino confere a cada passo
         return True
 
+    def esperar_o_treino(self, segundos: float = 60.0) -> bool:
+        """Desligando: espera o treino (que já recebeu o PARAR) salvar o checkpoint e sair.
+
+        Se o serviço sair antes, o processo do treino morre junto: no Windows ele fica no mesmo
+        grupo de processos que o lançador da .venv fecha ao sair. Foi o que aconteceu em 15/10 às
+        20:42 — o treino morreu no passo 50.200 e voltou ao checkpoint do 50.000. Devolve False se
+        o tempo acabou antes.
+        """
+        processo = self._processo
+        if processo is None:
+            return True
+        try:
+            processo.wait(timeout=segundos)
+            return True
+        except subprocess.TimeoutExpired:
+            return False
+
     # ---------------------------------------------------------------- wikipédia
     def estudar_wikipedia(self, partes: int) -> None:
         self._comecar("estudar a Wikipédia", self._wikipedia, partes)
@@ -130,9 +147,13 @@ class Estudo:
 
     # ------------------------------------------------------------------- treino
     def treinar_cerebro(self, horas: float) -> None:
+        if self.ocupado:
+            raise ErroFerramenta(f"Já estou ocupado: {self.trabalho} ({self.situacao}).")
         self._mantendo = False
-        self._comecar("treinar o cérebro", self._treinar, horas)
+        # O "treino pendente" é gravado ANTES de a thread começar: um treino que acaba muito depressa
+        # apagava o arquivo antes de ele ser escrito, e o arquivo ficava para trás (teste intermitente).
         self._arquivo_do_treino.write_text(json.dumps({"ate": time.time() + horas * 3600}), encoding="utf-8")
+        self._comecar("treinar o cérebro", self._treinar, horas)
 
     def _treinar(self, horas: float) -> str:
         from ..cerebro import dados, tokenizador

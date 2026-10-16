@@ -228,3 +228,25 @@ def test_motivo_do_fim_do_treino_vai_para_o_registro(kernel, monkeypatch):
     fala_tempo, fala_interrompido = [f for f in falas(kernel) if f.startswith("Treino encerrado")]
     assert "Atenção" not in fala_tempo
     assert "parou antes da hora sem eu pedir" in fala_interrompido and "treino.log" in fala_interrompido
+
+
+def test_desligar_espera_o_treino_salvar(kernel):
+    import subprocess
+
+    assert kernel.estudo.esperar_o_treino(0.1)                    # sem treino: nada a esperar
+
+    class Processo:
+        def __init__(self, demora):
+            self.demora, self.esperas = demora, []
+
+        def wait(self, timeout=None):
+            self.esperas.append(timeout)
+            if self.demora > timeout:
+                raise subprocess.TimeoutExpired("treino", timeout)
+            return 0
+
+    kernel.estudo._processo = Processo(demora=5)
+    assert kernel.estudo.esperar_o_treino(60) and kernel.estudo._processo.esperas == [60]
+    kernel.estudo._processo = Processo(demora=999)
+    assert not kernel.estudo.esperar_o_treino(60)                 # travou: o serviço segue desligando e anota
+    kernel.estudo._processo = None

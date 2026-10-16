@@ -110,6 +110,9 @@ def iniciar(args) -> int:
     try:
         servidor.run()
     finally:
+        # o treino já recebeu o pedido de parada: sair antes de ele salvar o mataria no meio
+        if not kernel.estudo.esperar_o_treino(60):
+            kernel.registro.anotar("estudo", evento="desligou_sem_esperar", motivo="o treino não saiu em 60 s")
         arquivo_pid.unlink(missing_ok=True)
     return 0
 
