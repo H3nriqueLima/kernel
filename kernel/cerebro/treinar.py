@@ -107,6 +107,7 @@ class ConfigTreino:
     amostragem: str = "passada"        # "passada" (o treino inteiro, sem repetir) ou "sorteio" (com reposição, em pedaços)
     sessao_passos: int | None = None   # uma sessão de N passos com o formato de uma sessão em horas (comparável)
     parar_se_estagnar: int = 0         # N > 0: para se a validação não melhorar ``melhora_minima`` em N medidas
+    marcos: tuple = ()                 # passos em que os pesos são guardados em marcos/ (para curvas de aprendizado)
     melhora_minima: float = 0.002
 
     @property
@@ -343,6 +344,15 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
             quadro.add_text("amostra", amostra, passo)
         avisar(f"  validação {perda_val:.3f} (melhor {melhor:.3f}) | amostra: {amostra!r}")
 
+    def guardar_marco() -> None:
+        """Os pesos deste passo em marcos/passo-N.npz, e quando (para a curva por horas de placa)."""
+        pasta_marcos = pasta / "marcos"
+        pasta_marcos.mkdir(exist_ok=True)
+        inferencia.exportar(modelo, pasta_marcos / f"passo-{passo}.npz")
+        with open(pasta_marcos / "marcos.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"passo": passo, "tokens": passo * cfg.acumular * cfg.lote * contexto,
+                                "segundos": round(segundos_antes + time.time() - inicio, 1)}) + "\n")
+
     def estado_extra() -> dict:
         return {"taxa": taxa, **({"amostrador": treino.estado()} if hasattr(treino, "estado") else {})}
 
@@ -377,6 +387,8 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
             otimizador.passo(taxa)
             otimizador.zerar()
             passo += 1
+            if passo in cfg.marcos:
+                guardar_marco()
 
             if passo % 10 == 0:
                 atual = float(perda)

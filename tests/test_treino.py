@@ -119,3 +119,21 @@ def test_para_quando_a_validacao_estabiliza(torch, tmp_path):
     resumo = treinar(tmp_path, cfg, avisar=avisos.append)
     assert resumo["motivo"] == "estabilizou" and resumo["passo"] == 10    # a 1ª medida vira a régua; a 2ª não melhora
     assert any("parando" in a and "medidas seguidas" in a for a in avisos)
+
+
+def test_marcos_guardam_os_pesos_e_a_hora(torch, tmp_path):
+    import json
+
+    from kernel.cerebro import inferencia
+    from kernel.cerebro.treinar import ConfigTreino, confere, treinar
+
+    _cerebro_pequeno(tmp_path)
+    cfg = ConfigTreino(tamanho="nano", lote=4, aquecimento=2, avaliar_cada=10, lotes_de_avaliacao=1, dispositivo="cpu",
+                       sessao_passos=12, marcos=(5, 12))
+    treinar(tmp_path, cfg, avisar=lambda _: None)
+    for passo in (5, 12):
+        assert confere(tmp_path / "marcos" / f"passo-{passo}.npz") is True
+        assert inferencia.CerebroNumpy is not None
+    linhas = [json.loads(l) for l in (tmp_path / "marcos" / "marcos.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [l["passo"] for l in linhas] == [5, 12]
+    assert linhas[1]["tokens"] == 12 * cfg.acumular * cfg.lote * 64 and linhas[1]["segundos"] >= linhas[0]["segundos"]

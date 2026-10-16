@@ -162,3 +162,15 @@ def test_treino_percebe_que_a_validacao_mudou(torch, tmp_path):
     cfg.passos = 100
     treinar(tmp_path, cfg, avisar=avisos.append)                              # agora a régua é a mesma
     assert not any("a validação mudou" in a for a in avisos)
+
+
+def test_so_a_perda_bate_com_o_protocolo_completo(torch, tmp_path):
+    from kernel.cerebro import protocolo
+
+    modelo = _pasta_pequena(tmp_path, torch)
+    completo = protocolo.avaliar(modelo, tmp_path, "cpu", tokens_ngramas=4000, avisar=lambda _: None)
+    so = protocolo.so_perdas(modelo, tmp_path, "cpu", ["teste", "validacao"])
+    assert set(so["perdas"]) == {"teste", "validacao"}
+    for nome in ("teste", "validacao"):
+        assert so["perdas"][nome]["perda"] == completo["perdas"][nome]["perda"]
+        assert so["perdas"][nome]["bits_por_byte"] == completo["perdas"][nome]["bits_por_byte"]

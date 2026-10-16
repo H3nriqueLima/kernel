@@ -280,6 +280,24 @@ def avaliar(arquivo_modelo: Path, pasta: Path, dispositivo="cpu", tokens_ngramas
     return relatorio
 
 
+def so_perdas(arquivo_modelo: Path, pasta: Path, dispositivo="cpu", conjuntos=("teste",)) -> dict:
+    """Só a perda (sem n-gramas, textos nem desempenho), nos conjuntos pedidos: para os pontos de uma curva."""
+    from .interface import Especificacao, carregar
+
+    pasta, arquivo_modelo = Path(pasta), Path(arquivo_modelo)
+    tok = Tokenizador.carregar(pasta / inferencia.TOKENIZADOR)
+    sets = conjuntos_fixos(pasta, tok)
+    cerebro = carregar(Especificacao(arquivo_modelo, pasta / inferencia.TOKENIZADOR, motor="torch",
+                                     dispositivo=dispositivo))
+    perdas = {}
+    for nome in conjuntos:
+        resultado = perda_pelo_cerebro(cerebro, sets[nome], _bytes_por_token(tok))
+        resultado.pop("_segundos")
+        perdas[nome] = resultado
+    return {"protocolo": VERSAO, "modelo": {"arquivo": arquivo_modelo.name, "sha256": cerebro.sha256,
+                                            "parametros": cerebro.parametros}, "perdas": perdas}
+
+
 def comparavel(relatorio: dict) -> dict:
     """O relatório sem o que muda de uma rodada para outra (data, velocidade, memória)."""
     return {chave: valor for chave, valor in relatorio.items() if chave not in ("data", "desempenho")}

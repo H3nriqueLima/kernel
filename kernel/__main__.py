@@ -371,6 +371,8 @@ def cerebro(args) -> int:
                       "amostragem"):
             if getattr(args, opcao, None) is not None:
                 setattr(treino, opcao, getattr(args, opcao))
+        if getattr(args, "marcos", None):
+            treino.marcos = tuple(int(n) for n in args.marcos.split(","))
         from .cerebro.treinar import MOTIVOS
         if hasattr(signal, "SIGBREAK"):
             # No Windows, fechar o console, sair da conta ou o sistema fechando o programa chegam como SIGBREAK,
@@ -469,6 +471,13 @@ def cerebro(args) -> int:
         modelo = Path(args.modelo or pasta / "modelo.npz")
         dispositivo, descricao = escolher(args.dispositivo)
         print(f"protocolo v{protocolo.VERSAO}: {modelo.name} em {descricao}")
+        if args.so_perda:
+            perdas = protocolo.so_perdas(modelo, pasta, dispositivo, args.so_perda.split(","))
+            saida = Path(args.saida or pasta / "avaliacoes" / f"{time.strftime('%Y-%m-%d_%H%M%S')}-{modelo.stem}-perdas.json")
+            saida.parent.mkdir(parents=True, exist_ok=True)
+            saida.write_text(json.dumps(perdas, ensure_ascii=False, indent=1), encoding="utf-8")
+            print(json.dumps({nome: p["perda"] for nome, p in perdas["perdas"].items()}))
+            return 0
         relatorio = protocolo.avaliar(modelo, pasta, dispositivo, args.ngramas)
         relatorio["desempenho"]["dispositivo"] = descricao
         saida = Path(args.saida or pasta / "avaliacoes" / f"{time.strftime('%Y-%m-%d_%H%M%S')}-{modelo.stem}")
@@ -671,6 +680,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--melhora-minima", dest="melhora_minima", type=float, help="o que conta como melhora (padrão 0,002)")
     a.add_argument("--semente", type=int, help="semente do sorteio dos dados")
     a.add_argument("--corte", dest="corte_gradiente", type=float, help="norma máxima do gradiente")
+    a.add_argument("--marcos", help='passos em que os pesos são guardados em marcos/ ("1221,2442,...")')
     a.add_argument("--amostragem", choices=["sorteio", "passada"],
                    help="sorteio: janelas com reposição; passada: o treino inteiro, sem repetir")
     a = acoes.add_parser("instalar", help="instala um cérebro treinado noutra pasta como o cérebro do serviço")
@@ -698,6 +708,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--dispositivo", default="auto", help="auto | directml | cpu")
     a.add_argument("--saida", help="pasta do relatório (padrão: dados/cerebro/avaliacoes/DATA-MODELO)")
     a.add_argument("--ngramas", type=int, default=100_000_000, help="tokens do treino para contar os n-gramas")
+    a.add_argument("--so-perda", dest="so_perda", help='só a perda nestes conjuntos ("teste,validacao"), sem textos')
     a.add_argument("--threads", type=int, default=0, help="limita as threads da CPU (0 = todas)")
     a = acoes.add_parser("gerar", help="pede um texto ao cérebro treinado")
     a.add_argument("texto")
