@@ -121,7 +121,8 @@ class ConfigMaos:
 @dataclass
 class ConfigCerebro:
     dispositivo: str = "auto"   # auto | directml | cuda | cpu (só para treinar)
-    tamanho: str = "mini"       # nano | mini | pequeno (ver kernel/cerebro/gpt.py)
+    tamanho: str = "mini"       # nano | mini | medio | pequeno | grande (ver kernel/cerebro/gpt.py)
+    pesos: str = ""             # o modelo.npz que o serviço usa ("" = dados/cerebro/modelo.npz)
     temperatura: float = 0.8
     top_k: int = 40
     max_tokens: int = 60

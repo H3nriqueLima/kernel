@@ -36,7 +36,9 @@ class ConfigGPT:
 TAMANHOS = {
     "nano": dict(contexto=64, camadas=2, cabecas=2, dim=64),        # ~0,4 mi: testes de minutos
     "mini": dict(contexto=256, camadas=6, cabecas=6, dim=192),      # ~3,5 mi: primeira rodada (horas)
-    "pequeno": dict(contexto=256, camadas=8, cabecas=8, dim=384),   # ~17 mi: segunda rodada (dias)
+    "medio": dict(contexto=256, camadas=8, cabecas=8, dim=320),     # ~11 mi: o intermediário da Fase 2
+    "pequeno": dict(contexto=256, camadas=8, cabecas=8, dim=384),   # ~16 mi (17 mi com vocabulário de 8192)
+    "grande": dict(contexto=256, camadas=12, cabecas=8, dim=512),   # ~40 mi: o maior que a Fase 2 mede
 }
 
 # (lote, acumular) que cabem nos 4 GB da RX 570 com DirectML, medidos nesta máquina.

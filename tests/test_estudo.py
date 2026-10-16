@@ -1,5 +1,6 @@
 """Os trabalhos longos de estudo, com a internet e a placa de vídeo trocadas por dublês."""
 import asyncio
+import threading
 import time
 
 from conftest import falas
@@ -160,12 +161,16 @@ def test_treino_aprovado_sobrevive_ao_reinicio_do_servico(cfg, relogio, monkeypa
     from kernel.nucleo import Kernel
 
     (cfg.pasta("cerebro") / "corpus.txt").write_text(CORPUS * 30, encoding="utf-8")
-    comandos = []
+    comandos, liberar = [], threading.Event()
 
     class Processo:
         def __init__(self, comando, **opcoes):
             comandos.append(comando)
-            self.stdout = iter(["parou no passo 100 com perda de validação 4.321. Reinicie o serviço para ele usar o cérebro novo.\n"])
+
+            def linhas():   # o treino falso só termina depois de o teste ler o anúncio da retomada
+                liberar.wait(10)
+                yield "parou no passo 100 com perda de validação 4.321. Reinicie o serviço para ele usar o cérebro novo.\n"
+            self.stdout = linhas()
 
         def wait(self):
             return 0
@@ -180,6 +185,7 @@ def test_treino_aprovado_sobrevive_ao_reinicio_do_servico(cfg, relogio, monkeypa
     segundo = Kernel(cfg, relogio=relogio)
     segundo._retomar_treino()
     assert "Retomei o treino do cérebro" in falas(segundo)[-1] and "faltavam 3,0 horas" in falas(segundo)[-1]
+    liberar.set()
     esperar(segundo, 60)
     assert comandos[0][1:5] == ["-m", "kernel", "cerebro", "treinar"] and 2.9 < float(comandos[0][-1]) <= 3.0
     assert segundo.estudo.treino_pendente() == 0.0                      # terminou: não há mais o que retomar

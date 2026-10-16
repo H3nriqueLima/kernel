@@ -175,7 +175,7 @@ class Estudo:
         self._processo = subprocess.Popen(
             [sys.executable.replace("pythonw.exe", "python.exe"), "-m", "kernel", "cerebro", "treinar",
              "--horas", str(horas)],
-            cwd=str(self.cfg.raiz), env={**os.environ, "KERNEL_DADOS": str(self.cfg.dados)},
+            cwd=str(self.cfg.raiz), env={**os.environ, "KERNEL_DADOS": str(self.cfg.dados), "KERNEL_PELO_SERVICO": "1"},
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         ultima, resumo = "", {}

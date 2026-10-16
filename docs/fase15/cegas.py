@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 
 PASTA = Path(__file__).resolve().parent / "cegas"
-MODOS = (("servico", 1), ("sorteio", 1))
+MODOS = (("servico", 1), ("sorteio", 1))   # na 1.5: 24 textos por modelo (a Fase 2 usa docs/fase2/cegas.py)
 
 
 def montar(fontes: dict[str, Path], semente: int = 15) -> None:

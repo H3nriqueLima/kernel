@@ -63,6 +63,41 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 **Portão de saída:** perda no teste menor que 3,094 por mais que a variação medida entre rodadas (que foi zero, então qualquer ganho reprodutível conta), nenhum teste removido ou afrouxado, parada e checkpoint intactos. A perda cair não basta: a coerência à mão é registrada à parte.
 
+## Fase 2 — Estudo de escala e cérebro candidato
+
+**Situação:** em andamento (desde 16/10/2026), autorizada para ir além do mini, com até 48 h de placa. Os resultados ficam em [fase2/](fase2/).
+
+**Objetivo:** descobrir com dados quanto de capacidade a mais compra de coerência e o que a RX 570 aguenta, antes de qualquer gasto.
+
+**Régua:** o teto do mini, 3,036 nats por token e 1,353 bits por byte no teste fixo. O treino de todos os tamanhos usa o padrão da Fase 1.5.
+
+**Critérios fixados antes de rodar** (propostos em 16/10/2026; só podem ser revistos antes do primeiro treino, nunca depois de ver resultados):
+
+- **Perda:** o candidato ganha pelo menos 0,05 nat contra o teto do mini, ou seja, 2,986 nats ou menos no teste fixo, o que equivale a cerca de 0,02 bits por byte (1,33 ou menos). É 25 vezes a variação entre sementes (0,002) e mais do que uma sessão extra de treino rende. O ganho precisa se repetir na segunda semente.
+- **Coerência à mão:** pelo menos 25% dos textos com nota de coerência 1 ou 2, nos dois avaliadores, com 48 textos por modelo. O mini hoje fica em torno de 10%.
+- **Assunto:** pelo menos 50% dos textos com nota 1 ou 2 (hoje 35%).
+- **Português:** não pode cair mais de 10 pontos percentuais em relação ao teto do mini. Na 1.5 ele caiu 13 (71% para 58%) e isso não foi explicado. Se aparecer de novo, investigar antes de seguir.
+
+**Tarefas:**
+
+- Definir uma interface estável do cérebro (carregar por configuração, gerar, pontuar), independente do resto do sistema.
+- Medir o limite real da placa para três ou quatro tamanhos (o mini de 3,5 mi, um intermediário perto de 10 mi, o pequeno de 17 mi e, se couber, um maior). Medir tokens por segundo, VRAM, RAM e estabilidade, com testes curtos.
+- Cada medida roda em processo separado, para uma não segurar a memória de vídeo da seguinte. O mini já usa 3,86 dos 4 GB, então os maiores provavelmente exigem lote menor com mais acúmulo de gradiente.
+- Treinar cada tamanho com o mesmo corpus, a mesma ordem de dados e a mesma régua, e comparar de dois jeitos: mesmos tokens (eficiência por token) e mesmas horas (eficiência por hora de GPU). O orçamento de horas é combinado antes.
+- Medir cada um no teste fixo, em bits por byte, contra os n-gramas e contra o teto do mini.
+- Repetir o finalista com uma segunda semente, para saber o ruído daquele tamanho.
+- Se houver orçamento, variar largura, profundidade e contexto separadamente no melhor tamanho, uma coisa por vez. O ganho da 1.5 veio do contexto longo.
+- Montar a curva de perda por tamanho e por tokens. Dizer o que foi medido e o que é estimativa.
+- Avaliação à mão: os mesmos 12 começos fixos, 48 textos por modelo, às cegas, com a rubrica de português, assunto e coerência. O Henrique e o Claude pontuam, e as notas ficam gravadas antes de abrir a chave. O teto do mini entra na mesma rodada, com os mesmos números de textos e avaliadores, para a comparação ser justa.
+- Registrar no `treino.log` e no histórico do serviço os treinos feitos pela linha de comando. Hoje "como foi seu último treino?" não enxerga a corrida da 1.5.
+- Experimento de corpus, separado e depois do estudo de escala: treinar o mesmo mini num corpus mais simples em português e medir. Verificar fonte e licença antes. O corpus ganha teste próprio e a Wikipédia continua como régua comum. Ganho num corpus simples não prova ganho na Wikipédia.
+- Limpeza do corpus só se um resultado apontar dado ruim como causa. O diagnóstico não apontou.
+- Separar a avaliação de linguagem (perda e geração) da de conversa (seguir instruções, uso de ferramentas), que fica para depois.
+
+**Entrega:** relatório de escala com a curva e a recomendação (ficar no tamanho X, ou o próximo passo exige mais computação) e um cérebro candidato com pesos fora do Git e impressão SHA-256.
+
+**Portão de saída:** o candidato atinge os quatro critérios acima de forma reprodutível, sem regressão nos testes e com inferência funcionando no serviço (carrega e responde pela inferência NumPy, conferida contra o PyTorch como na Fase 1) e gerando pelo menos 20 tokens por segundo na CPU.
+
 ## Fases seguintes
 
 A definir.

@@ -379,9 +379,32 @@ def cerebro(args) -> int:
         resumo = treinar(pasta, treino)
         print(f"parou no passo {resumo['passo']} ({MOTIVOS[resumo['motivo']]}) com perda de validação "
               f"{resumo['melhor_validacao']:.3f}. Reinicie o serviço para ele usar o cérebro novo.")
+        if not os.environ.get("KERNEL_PELO_SERVICO"):
+            # Treino pela linha de comando: anota no registro destes dados (o do serviço, se rodou em
+            # dados/cerebro). Quando é o serviço que lança o treino, quem anota é ele.
+            from .registro import Registro
+            Registro(cfg.pasta("registro")).anotar(
+                "estudo", evento="treino_acabou", origem="linha de comando", pasta=str(pasta), codigo=0,
+                pedimos=False, **{chave: resumo[chave] for chave in
+                                  ("motivo", "passo", "passo_inicial", "melhor_validacao", "segundos", "horas_pedidas")})
         # a última linha é para o serviço: ele lê daqui por que o treino parou
         print("RESUMO " + json.dumps({chave: resumo[chave] for chave in
                                       ("motivo", "passo", "passo_inicial", "melhor_validacao", "segundos", "horas_pedidas")}))
+
+    elif args.acao == "instalar":
+        from . import copias
+        from .cerebro import instalar
+        from .registro import Registro
+        if _saude(cfg.nucleo.porta):
+            print(f"Desligue o {NOME} antes (python -m kernel desligar): ele está usando o cérebro.")
+            return 1
+        copia = copias.fazer(cfg, motivo="antes-de-instalar", manter=cfg.copias.manter)
+        try:
+            evento = instalar.instalar(Path(args.de), pasta, Registro(cfg.pasta("registro")), args.teste)
+        except instalar.ErroInstalar as erro:
+            print(f"Não instalei: {erro}")
+            return 1
+        print(f"instalado: {evento['descricao']} (passo {evento['passo']}); o de antes está na cópia {copia.name}")
 
     elif args.acao == "medir":
         from .cerebro.gpt import LOTES
@@ -632,7 +655,7 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--corpus")
     acoes.add_parser("preparar", help="tokeniza o corpus em treino.bin e val.bin").add_argument("--corpus")
     a = acoes.add_parser("treinar", help="treina (ou continua treinando) o mini GPT")
-    a.add_argument("--tamanho", choices=["nano", "mini", "pequeno"])
+    a.add_argument("--tamanho", choices=["nano", "mini", "medio", "pequeno", "grande"])
     a.add_argument("--passos", type=int, default=None, help="meta total de passos (sem isso e sem --horas: 20000)")
     a.add_argument("--horas", type=float, default=None, help="uma sessão de N horas, continuando de onde parou")
     a.add_argument("--lote", type=int, default=None, help="padrão: o que cabe na RX 570 para o tamanho")
@@ -650,14 +673,17 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--corte", dest="corte_gradiente", type=float, help="norma máxima do gradiente")
     a.add_argument("--amostragem", choices=["sorteio", "passada"],
                    help="sorteio: janelas com reposição; passada: o treino inteiro, sem repetir")
+    a = acoes.add_parser("instalar", help="instala um cérebro treinado noutra pasta como o cérebro do serviço")
+    a.add_argument("--de", required=True, help="a pasta do cérebro novo (com modelo.npz, checkpoint e tokenizador)")
+    a.add_argument("--teste", type=float, help="a perda dele no teste fixo, para o registro")
     a = acoes.add_parser("medir", help="mede a velocidade de treino neste PC")
-    a.add_argument("--tamanho", choices=["nano", "mini", "pequeno"])
+    a.add_argument("--tamanho", choices=["nano", "mini", "medio", "pequeno", "grande"])
     a.add_argument("--dispositivo", choices=["auto", "directml", "cuda", "cpu"])
     a = acoes.add_parser("avaliar", help="mede o cérebro treinado e mostra amostras")
     a.add_argument("--janelas", type=int, default=24)
     a = acoes.add_parser("verificar", help="confere cada peça do pipeline contra uma referência e o teste de memorizar")
     a.add_argument("--modelo", help="o modelo.npz para conferir a inferência (padrão: o do serviço)")
-    a.add_argument("--memorizar", choices=["nano", "mini", "pequeno"], default="nano", help="tamanho no teste de memorizar")
+    a.add_argument("--memorizar", choices=["nano", "mini", "medio", "pequeno", "grande"], default="nano", help="tamanho no teste de memorizar")
     a.add_argument("--passos", type=int, default=300, help="passos do teste de memorizar")
     a.add_argument("--dispositivo", default="cpu", help="cpu | directml | auto (para o teste de memorizar)")
     a.add_argument("--threads", type=int, default=0, help="limita as threads da CPU (0 = todas)")

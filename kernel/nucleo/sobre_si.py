@@ -234,11 +234,12 @@ _POR_QUE_PAROU = {"tempo": "o tempo pedido acabou", "meta": "chegou à meta de p
 
 
 def _ultimo_treino(registro, dias: int = 30) -> dict | None:
-    """O evento do fim do último treino nos últimos ``dias`` dias do registro."""
+    """O último fim de treino, ou a última instalação de cérebro, nos últimos ``dias`` dias do registro."""
     for dia in reversed(registro.dias()[-dias:]):
         eventos = registro.do_dia(dia)
         for e in reversed(eventos):
-            if e.get("tipo") == "estudo" and e.get("evento") == "treino_acabou":
+            if ((e.get("tipo") == "estudo" and e.get("evento") == "treino_acabou")
+                    or (e.get("tipo") == "cerebro" and e.get("evento") == "instalado")):
                 return e
         for e in reversed(eventos):   # treinos de antes da v0.5.1 só deixavam o "fim"
             if e.get("tipo") == "estudo" and e.get("evento") == "fim" and str(e.get("trabalho", "")).startswith("trein"):
@@ -255,8 +256,16 @@ def _treino(kernel) -> str:
     fim = _ultimo_treino(kernel.registro)
     if fim is None:
         return cerebro(kernel)
-    quando = f"{fim['ts'][8:10]}/{fim['ts'][5:7]} às {fim['ts'][11:16]}"
-    if fim.get("evento") == "treino_acabou":
+    momento = str(fim.get("quando") or fim["ts"])   # "quando": o evento foi anotado depois de acontecer
+    quando = f"{momento[8:10]}/{momento[5:7]} às {momento[11:16]}"
+    if fim.get("evento") == "instalado":
+        frase = f"O cérebro que eu uso agora foi instalado em {quando}: um {fim.get('descricao', 'GPT')}"
+        if fim.get("passo") is not None:
+            frase += ", treinado até o passo " + f"{fim['passo']:,}".replace(",", ".")
+        if fim.get("teste") is not None:
+            frase += ", com perda de " + f"{float(fim['teste']):.3f}".replace(".", ",") + " no teste fixo"
+        partes = [frase + ". Ele foi treinado pela linha de comando, numa pasta à parte, e depois trocado pelo anterior."]
+    elif fim.get("evento") == "treino_acabou":
         minutos = float(fim.get("segundos") or 0) / 60
         duracao = f"{minutos:.0f} minutos" if minutos < 90 else f"{minutos / 60:.1f} horas".replace(".", ",")
         pedidas = fim.get("horas_pedidas")
@@ -267,6 +276,8 @@ def _treino(kernel) -> str:
             de, ate = (f"{n:,}".replace(",", ".") for n in (fim["passo_inicial"], fim["passo"]))
             frase += f", e foi do passo {de} ao {ate}"
         frase += f". Parou porque {_POR_QUE_PAROU.get(fim.get('motivo'), 'não sei: o motivo não ficou registrado')}."
+        if fim.get("origem") == "linha de comando":
+            frase += " Esse treino rodou pela linha de comando."
         partes = [frase]
     else:
         resultado = str(fim.get("resultado", ""))

@@ -82,7 +82,8 @@ class CerebroNumpy:
         self.cfg = cfg
         self.tokenizador = tokenizador
         self.parametros = int(sum(v.size for v in pesos.values()))
-        self.descricao = (f"mini GPT de {self.parametros / 1e6:.1f} milhões de parâmetros "
+        milhoes = f"{self.parametros / 1e6:.1f}".replace(".", ",")
+        self.descricao = (f"GPT de {milhoes} milhões de parâmetros "
                           f"({cfg['camadas']} camadas, contexto {cfg['contexto']})")
         self._sorteio = np.random.default_rng()
 
@@ -219,10 +220,16 @@ def carregar_de(pasta: Path) -> CerebroNumpy | None:
     return CerebroNumpy(pesos, cfg, Tokenizador.carregar(tokenizador))
 
 
-def carregar(cfg, avisar=None) -> CerebroNumpy | None:
-    """O cérebro treinado em ``dados/cerebro``, ou None se ainda não existe (ou se o arquivo não confere)."""
+def carregar(cfg, avisar=None):
+    """O cérebro que a configuração indica (``[cerebro] pesos``; vazio = ``dados/cerebro/modelo.npz``), pela
+    interface estável (``interface.Cerebro``). None se ainda não existe, ou se o arquivo não confere."""
+    from . import interface
+
+    especificacao = interface.Especificacao.da_configuracao(cfg)
+    if not especificacao.existe():
+        return None
     try:
-        return carregar_de(cfg.pasta("cerebro"))
+        return interface.carregar(especificacao)
     except ModeloEstragado as problema:
         if avisar:
             avisar(str(problema))

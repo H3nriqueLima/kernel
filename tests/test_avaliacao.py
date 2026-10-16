@@ -123,7 +123,8 @@ def test_protocolo_e_reprodutivel(torch, tmp_path):
     segundo = protocolo.avaliar(modelo, tmp_path, "cpu", tokens_ngramas=4000, avisar=lambda _: None)
     assert protocolo.comparavel(primeiro) == protocolo.comparavel(segundo)      # mesmos números, duas vezes
     assert set(primeiro["perdas"]) == {"teste", "validacao", "amostra_treino", "validacao_antiga"}
-    assert len(primeiro["amostras"]) == len(protocolo.COMECOS) * 5              # guloso + 3 sorteios + serviço
+    textos_por_comeco = sum(len(sementes) for *_, sementes in protocolo.MODOS.values())   # v2: guloso + 3 sorteios + 2 do serviço
+    assert len(primeiro["amostras"]) == len(protocolo.COMECOS) * textos_por_comeco == len(protocolo.COMECOS) * 6
     p = primeiro["perdas"]["teste"]
     assert abs(p["perplexidade"] - np.exp(p["perda"])) < 0.01 and len(p["por_posicao"]) == 32
     assert primeiro["ngramas"]["teste"]["trigrama"] < primeiro["ngramas"]["teste"]["unigrama"]

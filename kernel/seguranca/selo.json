@@ -6,7 +6,7 @@
   "interface/api.py": "5d9a8b4230429a4c811f5a970e84a779df6f8cb7c80f9c44fa21676c3d7c924d",
   "nucleo/servico.py": "54aa695ca6f2dfa6c4e3d5012a8d0502c5997b2966b2c23e3c92da8c10f9f66e",
   "nucleo/reflexos.py": "c86f05f79684d13d8d05febedc7fefcbec9abc40ff67c612c835b27aaa20e5dc",
-  "nucleo/estudo.py": "772526b44f0dc746291adfb9a1b4dbb6c49962b7b827f9fdecec63bc016e87d1",
+  "nucleo/estudo.py": "1db626173f69ca003e652ec4f6dd3e3846a7187eb570e215bcf228431cd7c475",
   "maos/__init__.py": "452b2abd2605c6fa98d7c1164f30422d6f97b212f39e02ad784d98574e4cb0d5",
   "maos/abrir_pagina.py": "03db7e9d309fcfae44d3ec5e31a0cb1083e4996064493243a7c8b5cf1d342b05",
   "maos/abrir_programa.py": "8da38497a01d1d175d5aa2e49a4de18780382ad8b22afba3864526828c52e331",
@@ -17,6 +17,6 @@
   "exploracao/explorador.py": "8ddd759e298878a03806a586d15f3dd024d0221e8ba6409efdb9ef2374fe3857",
   "cerebro/treinar.py": "6271088bd06e8c5b795635ba5a0cd9e026f474bc0edf74393d92a177ccfa3bf5",
   "copias.py": "0ecd0f4147e0ea3942dafb5afaaf3b059353c30de9e630db01b3ff6a562262b1",
-  "config.py": "70debc27469af5cd58aff1d37d005fbbc6bb30e8735c9c13f62c6b8bba344c50",
-  "__main__.py": "7f82fbfdc543f3b05f0aa2c5358d6fbe50c88e7182a5984a413712be2d2833ee"
+  "config.py": "754a1dde8bad66465a12235f0036b5fa6455e8c5fcf7ad8d79e666edc5ab17db",
+  "__main__.py": "3f45fa89c9f0e68b5dbd9e6592024ba7e061279057d191fc7d037cc2fcefe904"
 }

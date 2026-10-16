@@ -42,7 +42,7 @@ from .ngramas import Ngramas
 from .pesos import gpt_de_npz, ler_npz
 from .tokenizador import Tokenizador
 
-VERSAO = 1
+VERSAO = 2   # v2: o modo do serviço com 2 sementes (48 textos por modelo para a avaliação às cegas); pela interface
 COMECOS = ["O Brasil é", "A fotossíntese é o processo", "Albert Einstein foi um", "A cidade de São Paulo",
            "A Segunda Guerra Mundial", "O futebol é um esporte", "Em 1500, Pedro Álvares Cabral",
            "A água é uma substância", "O Sol é a estrela", "A língua portuguesa", "Machado de Assis escreveu",
@@ -50,7 +50,7 @@ COMECOS = ["O Brasil é", "A fotossíntese é o processo", "Albert Einstein foi 
 MODOS = {  # nome -> (temperatura, top_k, top_p, repetição, sementes)
     "guloso": (1.0, 1, 1.0, 1.0, (0,)),
     "sorteio": (0.8, 40, 1.0, 1.0, (1, 2, 3)),
-    "servico": (0.8, 40, 0.92, 1.2, (1,)),
+    "servico": (0.8, 40, 0.92, 1.2, (1, 2)),
 }
 TOKENS_GERADOS = 60
 FAIXAS = [(0, 1), (1, 4), (4, 16), (16, 64), (64, 128), (128, 256)]   # posições na janela
@@ -102,17 +102,15 @@ def _metricas(tok: Tokenizador, comeco: str, ids_gerados: list[int], vocabulario
     }
 
 
-def gerar_amostras(arquivo_modelo: Path, tok: Tokenizador, vocabulario: set[str]) -> tuple[list[dict], float]:
-    cfg, pesos = ler_npz(arquivo_modelo)
-    cerebro = inferencia.CerebroNumpy(pesos, cfg, tok)
+def gerar_amostras(cerebro, tok: Tokenizador, vocabulario: set[str]) -> tuple[list[dict], float]:
+    """Os textos de cada começo fixo, em cada modo e semente, pela interface do cérebro (geração do serviço)."""
     amostras, tokens, segundos = [], 0, 0.0
     for comeco in COMECOS:
         ids = tok.codificar(comeco)
         for modo, (temperatura, top_k, top_p, repeticao, sementes) in MODOS.items():
             for semente in sementes:
-                cerebro._sorteio = np.random.default_rng(semente)
                 inicio = time.time()
-                saida = cerebro.gerar(ids, TOKENS_GERADOS, temperatura, top_k, top_p, repeticao)
+                saida = cerebro.gerar_ids(ids, TOKENS_GERADOS, temperatura, top_k, top_p, repeticao, semente=semente)
                 segundos += time.time() - inicio
                 gerados = saida[len(ids):]
                 tokens += len(gerados)
@@ -222,12 +220,31 @@ def conjuntos_fixos(pasta: Path, tok: Tokenizador) -> dict[str, np.ndarray]:
     return saida
 
 
+def perda_pelo_cerebro(cerebro, ids: np.ndarray, bytes_por_token: np.ndarray) -> dict:
+    """O mesmo que ``perda_em``, pela interface do cérebro (``pontuar``)."""
+    T = cerebro.cfg["contexto"]
+    inicio = time.time()
+    perdas = cerebro.pontuar(ids)
+    segundos = time.time() - inicio
+    n = len(perdas)
+    alvos = np.asarray(ids[1:n * T + 1], dtype=np.int64).reshape(n, T)
+    soma, tokens = float(perdas.sum()), n * T
+    media = soma / tokens
+    return {"perda": round(media, 5), "perplexidade": round(math.exp(media), 3),
+            "bits_por_byte": round(soma / math.log(2) / float(bytes_por_token[alvos].sum()), 5), "tokens": tokens,
+            "por_posicao": perdas.mean(0).round(5).tolist(), "_segundos": segundos}
+
+
 def avaliar(arquivo_modelo: Path, pasta: Path, dispositivo="cpu", tokens_ngramas: int = 100_000_000,
             avisar=print) -> dict:
+    from .interface import Especificacao, carregar
+
     pasta, arquivo_modelo = Path(pasta), Path(arquivo_modelo)
     tok = Tokenizador.carregar(pasta / inferencia.TOKENIZADOR)
     sets = conjuntos_fixos(pasta, tok)
-    modelo = gpt_de_npz(arquivo_modelo, dispositivo)
+    cerebro = carregar(Especificacao(arquivo_modelo, pasta / inferencia.TOKENIZADOR, motor="torch",
+                                     dispositivo=dispositivo))
+    modelo = cerebro._torch
     vram = _PicoDeVram() if getattr(dispositivo, "type", str(dispositivo)) == "privateuseone" else None
     bytes_por_token = _bytes_por_token(tok)
     relatorio = {"protocolo": VERSAO, "data": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -238,7 +255,7 @@ def avaliar(arquivo_modelo: Path, pasta: Path, dispositivo="cpu", tokens_ngramas
                  "perdas": {}}
     tokens_avaliados, segundos = 0, 0.0
     for nome, ids in sets.items():
-        resultado = perda_em(modelo, ids, bytes_por_token, dispositivo)
+        resultado = perda_pelo_cerebro(cerebro, ids, bytes_por_token)
         segundos += resultado.pop("_segundos")
         tokens_avaliados += resultado["tokens"]
         relatorio["perdas"][nome] = resultado
@@ -253,7 +270,7 @@ def avaliar(arquivo_modelo: Path, pasta: Path, dispositivo="cpu", tokens_ngramas
     vocabulario_fonte = sets.get("amostra_treino", sets["validacao_antiga"])
     contagem = Counter(_PALAVRA.findall(tok.decodificar(vocabulario_fonte.tolist()).lower()))
     vocabulario = {palavra for palavra, n in contagem.items() if n >= 2}
-    amostras, tokens_por_segundo_geracao = gerar_amostras(arquivo_modelo, tok, vocabulario)
+    amostras, tokens_por_segundo_geracao = gerar_amostras(cerebro, tok, vocabulario)
     relatorio["geracao"] = _resumo_da_geracao(amostras)
     relatorio["amostras"] = amostras
     relatorio["desempenho"] = {"dispositivo": str(dispositivo),
