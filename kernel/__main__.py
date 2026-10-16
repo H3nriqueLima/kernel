@@ -403,6 +403,48 @@ def cerebro(args) -> int:
             return 1
         print(args.texto + modelo.continuar(args.texto, args.tokens, args.temperatura, cfg.cerebro.top_k))
 
+    elif args.acao == "verificar":
+        import torch
+
+        from .cerebro import verificar
+        from .cerebro.dispositivo import escolher
+        if args.threads:
+            torch.set_num_threads(args.threads)
+        dispositivo, descricao = escolher(args.dispositivo)
+        print(f"checagens do pipeline (memorizar no {args.memorizar} em {descricao})")
+        resultados = verificar.verificar(pasta, args.modelo, args.memorizar, dispositivo, args.passos)
+        falhas = [r.nome for r in resultados if not r.ok]
+        print(f"{len(resultados) - len(falhas)} de {len(resultados)} checagens passaram" +
+              (f"; falharam: {', '.join(falhas)}" if falhas else ""))
+        return 1 if falhas else 0
+
+    elif args.acao == "conjuntos":
+        from .cerebro import conjuntos
+        from .cerebro.tokenizador import Tokenizador
+        sessoes = []
+        for trecho in args.sessoes.split(","):
+            inicio, fim = (int(n) for n in trecho.split("-"))
+            sessoes.append(conjuntos.cobertura.Sessao(inicio, fim))
+        tok = Tokenizador.carregar(pasta / "tokenizador.json")
+        conjuntos.montar(pasta, sessoes, tok.id_fim, args.teste, args.validacao, args.amostra, args.semente)
+        print("conjuntos fixos prontos em", pasta / conjuntos.PASTA)
+
+    elif args.acao == "protocolo":
+        import torch
+
+        from .cerebro import protocolo
+        from .cerebro.dispositivo import escolher
+        if args.threads:
+            torch.set_num_threads(args.threads)
+        modelo = Path(args.modelo or pasta / "modelo.npz")
+        dispositivo, descricao = escolher(args.dispositivo)
+        print(f"protocolo v{protocolo.VERSAO}: {modelo.name} em {descricao}")
+        relatorio = protocolo.avaliar(modelo, pasta, dispositivo, args.ngramas)
+        relatorio["desempenho"]["dispositivo"] = descricao
+        saida = Path(args.saida or pasta / "avaliacoes" / f"{time.strftime('%Y-%m-%d_%H%M%S')}-{modelo.stem}")
+        protocolo.salvar(relatorio, saida)
+        print("relatório em", saida)
+
     elif args.acao == "avaliar":
         import math
 
@@ -596,6 +638,24 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--dispositivo", choices=["auto", "directml", "cuda", "cpu"])
     a = acoes.add_parser("avaliar", help="mede o cérebro treinado e mostra amostras")
     a.add_argument("--janelas", type=int, default=24)
+    a = acoes.add_parser("verificar", help="confere cada peça do pipeline contra uma referência e o teste de memorizar")
+    a.add_argument("--modelo", help="o modelo.npz para conferir a inferência (padrão: o do serviço)")
+    a.add_argument("--memorizar", choices=["nano", "mini", "pequeno"], default="nano", help="tamanho no teste de memorizar")
+    a.add_argument("--passos", type=int, default=300, help="passos do teste de memorizar")
+    a.add_argument("--dispositivo", default="cpu", help="cpu | directml | auto (para o teste de memorizar)")
+    a.add_argument("--threads", type=int, default=0, help="limita as threads da CPU (0 = todas)")
+    a = acoes.add_parser("conjuntos", help="monta os conjuntos fixos (teste e validação nunca lidos) e os tira do treino")
+    a.add_argument("--sessoes", required=True, help='as sessões de treino até agora, "inicio-fim,inicio-fim,..." em passos')
+    a.add_argument("--teste", type=int, default=2_000_000)
+    a.add_argument("--validacao", type=int, default=1_000_000)
+    a.add_argument("--amostra", type=int, default=1_000_000)
+    a.add_argument("--semente", type=int, default=2026)
+    a = acoes.add_parser("protocolo", help="o protocolo de avaliação reproduzível (perda, n-gramas, amostras, desempenho)")
+    a.add_argument("--modelo", help="o modelo.npz a medir (padrão: o do serviço)")
+    a.add_argument("--dispositivo", default="auto", help="auto | directml | cpu")
+    a.add_argument("--saida", help="pasta do relatório (padrão: dados/cerebro/avaliacoes/DATA-MODELO)")
+    a.add_argument("--ngramas", type=int, default=100_000_000, help="tokens do treino para contar os n-gramas")
+    a.add_argument("--threads", type=int, default=0, help="limita as threads da CPU (0 = todas)")
     a = acoes.add_parser("gerar", help="pede um texto ao cérebro treinado")
     a.add_argument("texto")
     a.add_argument("--tokens", type=int, default=80)
