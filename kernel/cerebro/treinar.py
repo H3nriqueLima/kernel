@@ -12,8 +12,10 @@ treino volta para o anterior. Tudo o que o treino diz vai também para
 ``treino.log``, inclusive o motivo de ter parado. Há dois jeitos de dizer quanto treinar:
 
 - ``--horas 6``: uma sessão de seis horas, que continua de onde a anterior
-  parou. A taxa de aprendizado sobe no começo da sessão e desce em cosseno até
-  o fim dela. Dá para repetir quantas madrugadas quiser;
+  parou. Na primeira, a taxa de aprendizado sobe no começo e desce em cosseno
+  até o fim; as seguintes continuam com a taxa baixa e constante em que a
+  primeira terminou (reaquecer a cada sessão custava ~0,02 no teste: ver
+  docs/fase15/relatorio.md). Dá para repetir quantas madrugadas quiser;
 - ``--passos 20000``: uma meta total de passos (o jeito antigo).
 
     python -m kernel cerebro treinar --horas 6
@@ -101,7 +103,7 @@ class ConfigTreino:
     # Ao continuar um treino numa sessão nova: "reaquecer" sobe a taxa de novo até ``taxa · taxa_ao_continuar``
     # e desce em cosseno; "retomar" segue com a taxa baixa e constante onde as sessões terminavam
     # (``taxa_ao_retomar``). Reaquecer desarruma o que o cérebro sabe: ver docs/fase1/diagnostico.md, 5.3.
-    ao_continuar: str = "reaquecer"
+    ao_continuar: str = "retomar"
     amostragem: str = "sorteio"        # "sorteio" (janelas com reposição, em pedaços) ou "passada" (sem repetição)
     sessao_passos: int | None = None   # uma sessão de N passos com o formato de uma sessão em horas (comparável)
     parar_se_estagnar: int = 0         # N > 0: para se a validação não melhorar ``melhora_minima`` em N medidas
