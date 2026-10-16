@@ -11,6 +11,8 @@ Versão **0.5.1**: a Fase 0 do [sub-roadmap](docs/ROADMAP.md), a 0.5 consolidada
 
 O que mudou, e o que ficou documentado como risco aceito, está em [docs/fase0/README.md](docs/fase0/README.md).
 
+Depois veio a Fase 1, o diagnóstico do cérebro ([relatório](docs/fase1/diagnostico.md)). O pipeline de treino e de inferência foi conferido peça por peça, e passou. O texto sem sentido vem do tamanho do modelo: 3,5 milhões de parâmetros. A medida de progresso agora é reprodutível: `python -m kernel cerebro protocolo`, num conjunto de teste fixo de texto que ele nunca leu.
+
 A 0.5 foi uma rodada de ajustes antes do cérebro maior. A conversa ficou mais esperta (perguntas que ele não conhecia, "fale mais", perguntas sobre ele mesmo), ele explora com critério (sem perder tempo com o Windows), não fala sozinho quando você não está e conta o que aprendeu. Da 0.4 vem a pesquisa na internet; da 0.3, a voz de difones; da 0.2, a autonomia, o celular e a orbe. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Ligar e desligar
