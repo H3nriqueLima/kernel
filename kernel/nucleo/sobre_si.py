@@ -229,7 +229,8 @@ def _autonomia(kernel) -> str:
 
 _POR_QUE_PAROU = {"tempo": "o tempo pedido acabou", "meta": "chegou à meta de passos",
                   "pedido": "pediram para parar (você, ou o serviço desligando)",
-                  "interrupcao": "o programa foi fechado de fora, mas salvou o checkpoint antes de sair"}
+                  "interrupcao": "o programa foi fechado de fora, mas salvou o checkpoint antes de sair",
+                  "estabilizou": "a validação parou de melhorar (o cérebro chegou onde dava com estes dados)"}
 
 
 def _ultimo_treino(registro, dias: int = 30) -> dict | None:

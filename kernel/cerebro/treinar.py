@@ -34,7 +34,7 @@ import numpy as np
 import torch
 
 from . import inferencia
-from .dados import Lotes
+from .dados import Lotes, Passada
 from .dispositivo import escolher
 from .gpt import GPT, TAMANHOS, ConfigGPT, criar
 from .otimizador import AdamW
@@ -45,7 +45,8 @@ ANTERIOR = "checkpoint-anterior.pt"
 DIARIO = "treino.log"
 # Por que uma sessão de treino acabou (vai para o registro e para a fala do fim do treino).
 MOTIVOS = {"tempo": "o tempo da sessão acabou", "meta": "chegou à meta de passos", "pedido": "parou a pedido",
-           "interrupcao": "foi interrompido (Ctrl+C ou sinal do sistema)"}
+           "interrupcao": "foi interrompido (Ctrl+C ou sinal do sistema)",
+           "estabilizou": "a validação parou de melhorar"}
 
 
 def _trocar(origem: Path, destino: Path) -> None:
@@ -97,6 +98,19 @@ class ConfigTreino:
     lotes_de_avaliacao: int = 20
     dispositivo: str = "auto"
     semente: int = 1337
+    # Ao continuar um treino numa sessão nova: "reaquecer" sobe a taxa de novo até ``taxa · taxa_ao_continuar``
+    # e desce em cosseno; "retomar" segue com a taxa baixa e constante onde as sessões terminavam
+    # (``taxa_ao_retomar``). Reaquecer desarruma o que o cérebro sabe: ver docs/fase1/diagnostico.md, 5.3.
+    ao_continuar: str = "reaquecer"
+    amostragem: str = "sorteio"        # "sorteio" (janelas com reposição, em pedaços) ou "passada" (sem repetição)
+    sessao_passos: int | None = None   # uma sessão de N passos com o formato de uma sessão em horas (comparável)
+    parar_se_estagnar: int = 0         # N > 0: para se a validação não melhorar ``melhora_minima`` em N medidas
+    melhora_minima: float = 0.002
+
+    @property
+    def taxa_ao_retomar(self) -> float:
+        """A taxa em que uma sessão continuada terminava: 10% do pico dela."""
+        return self.taxa * self.taxa_ao_continuar * 0.1
 
 
 PASSOS_SEM_META = 20_000   # sem ``--passos`` e sem ``--horas``, a meta é esta
@@ -157,8 +171,9 @@ def avaliar(modelo: GPT, janelas: np.ndarray, dispositivo, lote: int = 16) -> fl
 
 
 def salvar_checkpoint(arquivo: Path, modelo: GPT, otimizador: AdamW, passo: int, melhor: float,
-                      segundos: float, val_digital: str = "") -> None:
+                      segundos: float, val_digital: str = "", extra: dict | None = None) -> None:
     dados = {
+        **(extra or {}),   # a taxa do último passo, o estado do amostrador...
         "config": modelo.configuracao(),
         "modelo": {nome: p.cpu() for nome, p in modelo.state_dict().items()},
         "otimizador": otimizador.estado(),
@@ -248,7 +263,18 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
         otimizador.carregar_estado(salvo["otimizador"])
 
     contexto = modelo.cfg.contexto
-    treino = Lotes(pasta / "treino.bin", contexto, cfg.lote, semente=cfg.semente + passo)
+    if cfg.amostragem == "passada":
+        anterior = (salvo or {}).get("amostrador") or {}
+        mesmo = anterior.get("amostragem") == "passada" and anterior.get("semente") == cfg.semente
+        treino = Passada(pasta / "treino.bin", contexto, cfg.lote, tokenizador.id_fim, semente=cfg.semente,
+                         **({"epoca": anterior["epoca"], "posicao": anterior["posicao"]} if mesmo else {}))
+        if mesmo and anterior.get("tokens") != len(treino):   # o treino.bin mudou: a posição não vale mais
+            treino = Passada(pasta / "treino.bin", contexto, cfg.lote, tokenizador.id_fim, semente=cfg.semente)
+            mesmo = False
+        avisar(f"passada sem repetição: época {treino.epoca}, {treino.lido():.1%} lida" if mesmo
+               else "passada sem repetição: começando uma época nova")
+    else:
+        treino = Lotes(pasta / "treino.bin", contexto, cfg.lote, semente=cfg.semente + passo)
     arquivo_val = arquivo_de_validacao(pasta)
     janelas_val = janelas_fixas(arquivo_val, contexto, cfg.lotes_de_avaliacao * cfg.lote)
     val_digital = f"{arquivo_val.name}:{hashlib.sha256(janelas_val.tobytes()).hexdigest()[:16]}"
@@ -267,11 +293,16 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
             melhor = float("inf")
         avisar(f"a validação mudou para {arquivo_val.name}: a melhor perda passa a ser a do modelo exportado, "
                f"medida nela: {melhor:.4f}")
-    por_horas = cfg.passos is None and bool(cfg.horas)       # uma sessão que só acaba quando o tempo acaba
-    meta = None if por_horas else (cfg.passos or PASSOS_SEM_META)
+    por_passos = cfg.sessao_passos is not None               # uma sessão de N passos, no formato de uma em horas
+    por_horas = (cfg.passos is None and bool(cfg.horas)) or por_passos   # sessões: a taxa segue o formato da sessão
+    meta = passo + cfg.sessao_passos if por_passos else (None if por_horas else (cfg.passos or PASSOS_SEM_META))
     passo_inicial = passo
+    retomar = passo_inicial > 0 and por_horas and cfg.ao_continuar == "retomar"
     if passo:
         avisar(f"continuando do passo {passo} (melhor perda de validação até aqui: {melhor:.3f})")
+    if retomar:
+        avisar(f"continuando sem reaquecer: taxa constante de {cfg.taxa_ao_retomar:.1e}")
+    referencia, sem_melhora = melhor, 0   # para parar quando a validação estabilizar
     if meta is not None and passo >= meta:
         avisar(f"a meta de {meta} passos já foi atingida; use --horas para treinar mais uma sessão.")
 
@@ -285,24 +316,33 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
         diario_de_treino.write_text("passo,perda_treino,perda_val,taxa,tokens_por_segundo,segundos\n")
 
     def ponto_de_controle(perda_treino: float, tokens_por_segundo: float) -> None:
-        nonlocal melhor
+        nonlocal melhor, referencia, sem_melhora
         modelo.eval()
         perda_val = avaliar(modelo, janelas_val, dispositivo)
         semente = tokenizador.codificar("O Brasil")
         amostra = tokenizador.decodificar(modelo.gerar(semente, 40, parar_em=tokenizador.id_fim))
         modelo.train()
         segundos = segundos_antes + time.time() - inicio
-        salvar_checkpoint(arquivo, modelo, otimizador, passo, min(melhor, perda_val), segundos, val_digital)
+        salvar_checkpoint(arquivo, modelo, otimizador, passo, min(melhor, perda_val), segundos, val_digital,
+                          extra=estado_extra())
+        if perda_val <= referencia - cfg.melhora_minima:
+            referencia, sem_melhora = perda_val, 0
+        else:
+            sem_melhora += 1
         if perda_val < melhor:
             melhor = perda_val
             inferencia.exportar(modelo, pasta / inferencia.MODELO)
         with open(diario_de_treino, "a", newline="") as f:
-            csv.writer(f).writerow([passo, f"{perda_treino:.4f}", f"{perda_val:.4f}",
+            treino_txt = "" if perda_treino is None else f"{perda_treino:.4f}"   # sem média antes do passo 10
+            csv.writer(f).writerow([passo, treino_txt, f"{perda_val:.4f}",
                                     f"{taxa:.6f}", f"{tokens_por_segundo:.0f}", f"{segundos:.0f}"])
         if quadro:
             quadro.add_scalar("perda/validacao", perda_val, passo)
             quadro.add_text("amostra", amostra, passo)
         avisar(f"  validação {perda_val:.3f} (melhor {melhor:.3f}) | amostra: {amostra!r}")
+
+    def estado_extra() -> dict:
+        return {"taxa": taxa, **({"amostrador": treino.estado()} if hasattr(treino, "estado") else {})}
 
     inicio = time.time()
     limite = inicio + cfg.horas * 3600 if cfg.horas else None
@@ -319,9 +359,12 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
                 avisar("parando a pedido: salvando o checkpoint...")
                 motivo = "pedido"
                 break
-            if por_horas:
-                taxa = taxa_na_sessao(cfg, passo - passo_inicial, (time.time() - inicio) / (cfg.horas * 3600),
-                                      continuando=passo_inicial > 0)
+            if retomar:
+                taxa = cfg.taxa_ao_retomar
+            elif por_horas:
+                fracao = ((passo - passo_inicial) / cfg.sessao_passos if por_passos
+                          else (time.time() - inicio) / (cfg.horas * 3600))
+                taxa = taxa_na_sessao(cfg, passo - passo_inicial, fracao, continuando=passo_inicial > 0)
             else:
                 taxa = taxa_no_passo(cfg, passo)
             for _ in range(cfg.acumular):
@@ -359,6 +402,10 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
             if passo % cfg.avaliar_cada == 0:
                 ponto_de_controle(media, tokens_por_segundo)
                 marca, passo_da_marca = time.time(), passo
+                if cfg.parar_se_estagnar and sem_melhora >= cfg.parar_se_estagnar:
+                    avisar(f"a validação não melhorou {cfg.melhora_minima} em {sem_melhora} medidas seguidas: parando")
+                    motivo = "estabilizou"
+                    break
     except KeyboardInterrupt:
         avisar("interrompido: salvando o checkpoint antes de sair...")
         motivo = "interrupcao"
@@ -372,7 +419,7 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
         motivo = "meta" if meta is not None and passo >= meta else "tempo"
     if motivo == "interrupcao":   # quem está sendo fechado tem poucos segundos: salva já, sem avaliar
         salvar_checkpoint(arquivo, modelo, otimizador, passo, melhor, segundos_antes + time.time() - inicio,
-                          val_digital)
+                          val_digital, extra=estado_extra())
     elif media is not None and passo % cfg.avaliar_cada != 0:
         ponto_de_controle(media, tokens_por_segundo)
     if quadro:

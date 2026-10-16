@@ -204,7 +204,8 @@ class Estudo:
         fala = f"Treino encerrado. {ultima} Já estou usando o cérebro novo."
         # Acabou antes de 90% do tempo pedido sem ninguém pedir? (Foi o que aconteceu em 13/10: veja
         # docs/fase0/investigacao-a3.md.) Avisa no chat em vez de deixar passar como um fim normal.
-        cedo = not pedimos and motivo != "meta" and resumo.get("segundos", 0) < 0.9 * horas * 3600
+        cedo = (not pedimos and motivo not in ("meta", "estabilizou")
+                and resumo.get("segundos", 0) < 0.9 * horas * 3600)
         if cedo or (motivo == "pedido" and not pedimos) or motivo in ("interrupcao", "desconhecido"):
             fala += (" Atenção: ele parou antes da hora sem eu pedir. O que o treino disse está em "
                      "dados/cerebro/treino.log.")
