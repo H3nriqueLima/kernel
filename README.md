@@ -272,9 +272,13 @@ python -m kernel cerebro wikipedia --partes 1      baixa e limpa a Wikipédia PT
 python -m kernel cerebro tokenizador               treina o BPE de 4096 tokens
 python -m kernel cerebro preparar                  tokeniza o corpus
 python -m kernel cerebro treinar --horas 8         treina o mini GPT na RX 570 (cada sessão continua de onde a outra parou)
-python -m kernel cerebro avaliar                   perda, perplexidade e amostras do cérebro treinado
+python -m kernel cerebro avaliar                   perda, perplexidade e amostras do cérebro treinado (rápido)
 python -m kernel cerebro gerar "O Brasil é"        pede um texto ao cérebro
+python -m kernel cerebro verificar                 confere cada peça do pipeline e o teste de memorizar
+python -m kernel cerebro protocolo                 a medida reprodutível: perda nos conjuntos fixos, n-gramas, textos, desempenho
 ```
+
+**Como medir progresso de verdade.** Use o `protocolo`, não a perda que aparece no treino. Ele mede o cérebro em conjuntos fixos (`dados/cerebro/avaliacao/`) de texto que ele nunca leu, sempre do mesmo jeito: o mesmo modelo dá os mesmos números. A régua de hoje é **3,094 nats por token no teste** (1,379 bits por byte), o modelo do passo 46.000. Uma perda menor não garante texto com sentido: o protocolo guarda os textos gerados para conferir. O diagnóstico completo está em [docs/fase1/diagnostico.md](docs/fase1/diagnostico.md).
 
 Velocidade medida neste PC (i5-2400, 12 GB, RX 570 4 GB): o `mini` (3,5 mi de parâmetros) treina a ~21 milhões de tokens por hora na placa, cerca de 7 a 8 horas para a meta padrão; o `pequeno` (17 mi) a ~5,5 milhões por hora, cerca de 8 madrugadas.
 

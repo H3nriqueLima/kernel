@@ -1,0 +1,10 @@
+{
+ "identico": true,
+ "diferencas_de_perda": {
+  "teste": 0.0,
+  "validacao": 0.0,
+  "amostra_treino": 0.0,
+  "validacao_antiga": 0.0
+ },
+ "dispositivo": "Radeon RX 570 Series (DirectML)"
+}

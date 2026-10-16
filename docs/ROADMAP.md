@@ -23,6 +23,25 @@ Este é um roteiro de estabilização que corre antes da fase 4 do [plano](PLANO
 
 O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [fase0/README.md](fase0/README.md).
 
+## Fase 1 — Avaliação científica do cérebro
+
+**Situação:** concluída em 15/10/2026. Veja o [relatório de diagnóstico](fase1/diagnostico.md).
+
+**Objetivo:** descobrir por que o modelo atual não gera texto coerente e criar uma forma confiável de medir progresso.
+
+**Tarefas:**
+
+- Fixar um conjunto de dados de treino, validação e teste sem sobreposição indevida.
+- Medir a perda de treino e validação, perplexidade, velocidade, uso de RAM/VRAM e estabilidade.
+- Verificar tokenizador, máscara causal, deslocamento dos alvos, normalização, inicialização, gradientes, otimizador e salvamento/restauração do checkpoint.
+- Investigar se os 22% de processamento dos dados e o treinamento interrompido explicam parte do resultado, sem presumir que sejam a única causa.
+- Guardar amostras de geração com prompts fixos e avaliar coerência, repetição e continuidade em português.
+- Criar testes de sobreajuste em um conjunto minúsculo: o modelo deve conseguir memorizar deliberadamente uma amostra pequena. Isso ajuda a detectar erros no pipeline.
+
+**Entrega:** relatório de diagnóstico e um comando de avaliação reproduzível.
+
+**Portão de saída:** treinamento e inferência validados; o modelo consegue aprender um conjunto pequeno deliberadamente e há uma linha de base estável. Não avançar apenas porque a perda caiu.
+
 ## Fases seguintes
 
 A definir.
