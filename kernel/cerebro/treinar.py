@@ -104,7 +104,7 @@ class ConfigTreino:
     # e desce em cosseno; "retomar" segue com a taxa baixa e constante onde as sessões terminavam
     # (``taxa_ao_retomar``). Reaquecer desarruma o que o cérebro sabe: ver docs/fase1/diagnostico.md, 5.3.
     ao_continuar: str = "retomar"
-    amostragem: str = "sorteio"        # "sorteio" (janelas com reposição, em pedaços) ou "passada" (sem repetição)
+    amostragem: str = "passada"        # "passada" (o treino inteiro, sem repetir) ou "sorteio" (com reposição, em pedaços)
     sessao_passos: int | None = None   # uma sessão de N passos com o formato de uma sessão em horas (comparável)
     parar_se_estagnar: int = 0         # N > 0: para se a validação não melhorar ``melhora_minima`` em N medidas
     melhora_minima: float = 0.002

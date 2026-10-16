@@ -15,7 +15,7 @@
   "maos/listar_pasta.py": "9517da7f874191fc64b70777de33f0b54f9c9c452b5d37aa64cf2395b61d1b89",
   "internet/rede.py": "c58461902df52df2db9064c65d0af75a32d34777ab049e7dbb69e46a508cec00",
   "exploracao/explorador.py": "8ddd759e298878a03806a586d15f3dd024d0221e8ba6409efdb9ef2374fe3857",
-  "cerebro/treinar.py": "3722e81f7322a55f0f475390199d2e84c34da107d0564f82b2773a4bef592939",
+  "cerebro/treinar.py": "c83cb118ed3c355dad8d0ddcab36ee1ce295c025c722d0b723ffb9edd8987b66",
   "copias.py": "0ecd0f4147e0ea3942dafb5afaaf3b059353c30de9e630db01b3ff6a562262b1",
   "config.py": "70debc27469af5cd58aff1d37d005fbbc6bb30e8735c9c13f62c6b8bba344c50",
   "__main__.py": "7f82fbfdc543f3b05f0aa2c5358d6fbe50c88e7182a5984a413712be2d2833ee"
