@@ -44,8 +44,9 @@ TAMANHOS = {
 # (lote, acumular) que cabem nos 4 GB da RX 570 com DirectML, medidos nesta máquina.
 # O DirectML não reaproveita memória como o CUDA: o "mini" estoura com lote 24 e o
 # "pequeno" com lote 8. Acumular gradiente compensa o lote pequeno.
-# medidos em 16 e 17/10; o pequeno cabe com lote 8, mas no limite: com outros programas usando a placa faltou memória
-LOTES = {"nano": (16, 2), "mini": (16, 2), "medio": (8, 4), "pequeno": (4, 8), "grande": (4, 8)}
+# medidos em 16 e 17/10: o pequeno cabe com lote 8 e o grande com lote 4, mas no limite (pico de 3,2 GB numa placa
+# de 4 GB); com outros programas usando a placa, faltou memória. Por isso a metade, com o dobro de acúmulo.
+LOTES = {"nano": (16, 2), "mini": (16, 2), "medio": (8, 4), "pequeno": (4, 8), "grande": (2, 16)}
 
 
 def gelu(x):

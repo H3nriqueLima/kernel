@@ -72,3 +72,8 @@ Em todos: contexto de 256, vocabulário de 4.096 e 8.192 tokens por passo.
   - **Correção:** o script espera a placa liberar entre processos e tenta de novo se faltar memória no começo.
   - **Lote do pequeno:** 4 × 8 em vez de 8 × 4. São os mesmos 8.192 tokens por passo, então a conta é a mesma; muda só a velocidade (2.951 contra 3.188 tokens/s). O grande segue com 4 × 8.
   - **Ordem:** pequeno e grande rodam de novo, nessa ordem, antes da escolha do finalista. O orçamento total (48 h desde 16/10 às 19:30) não muda; a continuação do finalista fica com menos horas.
+- **17/10, 10:58:** o grande com lote 4 ficou sem memória de vídeo de novo nas duas primeiras tentativas, com a placa quase livre (~0,3 GB em uso por outros programas). Na medida de 16/10 ele coube, mas com pico de 3,2 GB numa placa de 4 GB: está no limite.
+  - **A terceira tentativa** (automática) usa lote 2 × 16. São os mesmos 8.192 tokens por passo, na mesma ordem, então a conta é a mesma; muda a velocidade, ~1.180 tokens/s, e o treino leva **~14 h em vez de 9,4 h**.
+  - **A validação interna do treino** (a que escolhe o modelo exportado e decide parar) fica com 40 janelas em vez de 80, porque o número de janelas acompanha o lote. As medidas da comparação não mudam: são do protocolo, no teste fixo.
+  - **`LOTES` do grande** passa a 2 × 16, para a segunda semente e a continuação começarem com o lote que cabe.
+  - **Consequência para o orçamento:** a comparação acaba por volta das 02:15 de 18/10. Se o grande for o finalista, a segunda semente leva outras ~15 h, e quase não sobra tempo de continuação dentro das 48 h.
