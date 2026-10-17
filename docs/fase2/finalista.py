@@ -83,7 +83,12 @@ def main() -> int:
     marco = origem / "marcos" / "passo-7325.npz"   # o modelo exportado de partida: o do último passo (60 mi)
     shutil.copy2(marco, pasta / "modelo.npz")
     shutil.copy2(Path(str(marco) + ".sha256"), pasta / "modelo.npz.sha256")
-    horas = args.orcamento - (datetime.now() - inicio).total_seconds() / 3600 - 1.0   # 1 h para as medidas finais
+    # o orçamento pode ter mudado enquanto a segunda semente rodava (só o Henrique muda): dados/fase2/orcamento.txt
+    orcamento, arquivo_orcamento = args.orcamento, RAIZ / "dados" / "fase2" / "orcamento.txt"
+    if arquivo_orcamento.exists():
+        orcamento = float(arquivo_orcamento.read_text(encoding="utf-8").strip().replace(",", "."))
+        avisar(f"orçamento de {orcamento:g} h (de {arquivo_orcamento.name}; o registrado era {args.orcamento:g} h)")
+    horas = orcamento - (datetime.now() - inicio).total_seconds() / 3600 - 1.0   # 1 h para as medidas finais
     lote, acumular = LOTES[finalista]
     if horas > 0.25:
         comando = [str(PYTHON), "-m", "kernel", "cerebro", "treinar", "--tamanho", finalista, "--horas", f"{horas:.2f}",
