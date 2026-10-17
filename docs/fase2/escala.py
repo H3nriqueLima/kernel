@@ -41,6 +41,30 @@ def preparar(pasta: Path) -> None:
     shutil.copy2(CEREBRO / "tokenizador.json", pasta / "tokenizador.json")
 
 
+def memoria_de_video_em_uso_mb() -> float | None:
+    """O que a placa tem ocupado agora, por todos os programas (contador do Windows)."""
+    saida = subprocess.run(["typeperf", r"\GPU Adapter Memory(*)\Dedicated Usage", "-sc", "1"], capture_output=True,
+                           text=True, errors="replace").stdout.strip().splitlines()
+    medidas = [linha for linha in saida if linha.startswith('"') and "/" in linha.split('","')[0]]   # "data","valor",...
+    try:
+        valores = [float(v.strip('"')) for v in medidas[-1].split('","')[1:] if v.strip('"')]
+        return max(valores) / 2**20
+    except (IndexError, ValueError):
+        return None
+
+
+def esperar_a_placa(avisar, limite_mb: float = 1500, maximo_s: int = 300) -> None:
+    """O DirectML devolve a memória de vídeo um pouco depois de o processo sair: espera ela baixar."""
+    time.sleep(30)
+    inicio = time.time()
+    while time.time() - inicio < maximo_s:
+        uso = memoria_de_video_em_uso_mb()
+        if uso is None or uso < limite_mb:
+            return
+        time.sleep(15)
+    avisar(f"a placa continua com {memoria_de_video_em_uso_mb():.0f} MB ocupados; seguindo assim mesmo")
+
+
 def rodar(comando: list[str], **ambiente) -> subprocess.CompletedProcess:
     return subprocess.run(comando, cwd=RAIZ, capture_output=True, text=True, encoding="utf-8", errors="replace",
                           env={**os.environ, "PYTHONIOENCODING": "utf-8", **ambiente})
@@ -68,10 +92,24 @@ def main() -> int:
         comando = [str(PYTHON), "-m", "kernel", "cerebro", "treinar", "--tamanho", tamanho, "--sessao-passos",
                    str(args.passos), "--lote", str(lote), "--acumular", str(acumular), "--semente", str(args.semente),
                    "--marcos", ",".join(map(str, marcos))]
-        avisar(f"{nome}: treinando ({' '.join(comando[3:])})")
-        inicio = time.time()
-        resultado = rodar(comando, KERNEL_DADOS=str(pasta.parent))
-        (pasta / "saida.txt").write_text(resultado.stdout + resultado.stderr, encoding="utf-8")
+        for tentativa in range(3):
+            esperar_a_placa(avisar)
+            avisar(f"{nome}: treinando ({' '.join(comando[3:])})")
+            inicio = time.time()
+            resultado = rodar(comando, KERNEL_DADOS=str(pasta.parent))
+            (pasta / "saida.txt").write_text(resultado.stdout + resultado.stderr, encoding="utf-8")
+            sem_memoria = "not enough GPU video memory" in resultado.stdout + resultado.stderr
+            if resultado.returncode == 0 or not sem_memoria or time.time() - inicio > 600:
+                break
+            # faltou memória logo no começo: espera e tenta de novo; na terceira vez, com metade do lote
+            # (o mesmo número de tokens por passo: a conta é a mesma, só cabe menos de uma vez)
+            avisar(f"{nome}: faltou memória de vídeo no começo (tentativa {tentativa + 1}); tentando de novo")
+            preparar(pasta)
+            if tentativa == 1:
+                lote, acumular = max(1, lote // 2), acumular * 2
+                comando[comando.index("--lote") + 1] = str(lote)
+                comando[comando.index("--acumular") + 1] = str(acumular)
+            time.sleep(120)
         if resultado.returncode != 0:
             avisar(f"{nome}: o treino falhou (código {resultado.returncode}); veja {pasta / 'saida.txt'}")
             continue
@@ -79,11 +117,13 @@ def main() -> int:
         docs.mkdir(parents=True, exist_ok=True)
         shutil.copy2(pasta / "marcos" / "marcos.jsonl", docs / "marcos.jsonl")
         for marco in marcos:
+            esperar_a_placa(avisar)
             arquivo = pasta / "marcos" / f"passo-{marco}.npz"
             medida = rodar([str(PYTHON), "-m", "kernel", "cerebro", "protocolo", "--modelo", str(arquivo),
                             "--so-perda", "teste,validacao", "--saida", str(docs / f"marco-{marco}.json")])
             avisar(f"{nome}: marco {marco}: {medida.stdout.strip().splitlines()[-1] if medida.stdout.strip() else medida.stderr[-200:]}")
         final = pasta / "marcos" / f"passo-{marcos[-1]}.npz"
+        esperar_a_placa(avisar)
         completo = rodar([str(PYTHON), "-m", "kernel", "cerebro", "protocolo", "--modelo", str(final), "--saida", str(docs)])
         relatorio = docs / "relatorio.json"
         if relatorio.exists():

@@ -64,3 +64,11 @@ Em todos: contexto de 256, vocabulário de 4.096 e 8.192 tokens por passo.
 
 - **Experimento de corpus:** um corpus mais simples em português, depois do estudo de escala, com fonte e licença verificadas antes de baixar.
 - **Avaliação de conversa:** seguir instruções e usar ferramentas, separada da avaliação de linguagem, que é o que esta fase mede.
+
+## Alterações depois do registro
+
+- **17/10, 04:30:** o pequeno (lote 8) e o grande (lote 4) falharam por falta de memória de vídeo logo no começo. Cada um começou no mesmo segundo em que o processo anterior terminava, antes de a placa devolver a memória. Outros programas da área de trabalho também usam ~0,6 GB dela.
+  - **O pipeline do finalista** começou sozinho com só mini e medio prontos, escolheu o medio e lançou a segunda semente dele. Isso fere a regra (comparar os quatro); foi interrompido em 10 minutos, e o registro dele está em `dados/fase2/finalista-abortado.log`.
+  - **Correção:** o script espera a placa liberar entre processos e tenta de novo se faltar memória no começo.
+  - **Lote do pequeno:** 4 × 8 em vez de 8 × 4. São os mesmos 8.192 tokens por passo, então a conta é a mesma; muda só a velocidade (2.951 contra 3.188 tokens/s). O grande segue com 4 × 8.
+  - **Ordem:** pequeno e grande rodam de novo, nessa ordem, antes da escolha do finalista. O orçamento total (48 h desde 16/10 às 19:30) não muda; a continuação do finalista fica com menos horas.
