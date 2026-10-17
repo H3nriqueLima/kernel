@@ -60,6 +60,11 @@ def main() -> int:
     while not (log.exists() and log.read_text(encoding="utf-8", errors="replace").rstrip().endswith("fim")):
         time.sleep(60)
     finalista, perdas = escolher_finalista()
+    if set(perdas) != set(ORDEM):
+        # a regra compara os quatro: sem um deles não há finalista (foi o que deu errado em 17/10 às 04:30)
+        avisar(f"comparação incompleta: só {sorted(perdas)} têm a medida de 60 mi; parando sem escolher")
+        avisar("fim")
+        return 1
     avisar(f"comparação pronta: {json.dumps(perdas)} | finalista pela regra do plano: {finalista}")
     (ESCALA.parent / "finalista.json").write_text(json.dumps({"finalista": finalista, "perdas_60mi": perdas},
                                                              indent=1), encoding="utf-8")
@@ -68,7 +73,7 @@ def main() -> int:
     semente = rodar([str(PYTHON), str(RAIZ / "docs" / "fase2" / "escala.py"), "--tamanhos", finalista, "--semente", "2026"])
     avisar("segunda semente: " + (semente.stdout.strip().splitlines()[-2] if semente.stdout.strip() else semente.stderr[-300:]))
 
-    from escala import preparar
+    from escala import esperar_a_placa, preparar
     from kernel.cerebro.gpt import LOTES
     origem = RAIZ / "dados" / "fase2" / "escala" / finalista / "cerebro"
     pasta = RAIZ / "dados" / "fase2" / "candidato" / "cerebro"
@@ -84,9 +89,19 @@ def main() -> int:
         comando = [str(PYTHON), "-m", "kernel", "cerebro", "treinar", "--tamanho", finalista, "--horas", f"{horas:.2f}",
                    "--lote", str(lote), "--acumular", str(acumular), "--parar-se-estagnar", "6",
                    "--melhora-minima", "0.002"]
-        avisar(f"continuação do {finalista} por até {horas:.2f} h: {' '.join(comando[3:])}")
-        continuacao = rodar(comando, KERNEL_DADOS=str(pasta.parent))
-        (pasta / "saida.txt").write_text(continuacao.stdout + continuacao.stderr, encoding="utf-8")
+        for tentativa in range(3):
+            esperar_a_placa(avisar)   # o processo anterior acabou de sair da placa
+            avisar(f"continuação do {finalista} por até {horas:.2f} h: {' '.join(comando[3:])}")
+            comeco = time.time()
+            continuacao = rodar(comando, KERNEL_DADOS=str(pasta.parent))
+            (pasta / "saida.txt").write_text(continuacao.stdout + continuacao.stderr, encoding="utf-8")
+            sem_memoria = "not enough GPU video memory" in continuacao.stdout + continuacao.stderr
+            if continuacao.returncode == 0 or not sem_memoria or time.time() - comeco > 600:
+                break
+            avisar(f"faltou memória de vídeo no começo da continuação (tentativa {tentativa + 1}); tentando de novo")
+            time.sleep(120)
+            horas -= (time.time() - comeco) / 3600
+            comando[comando.index("--horas") + 1] = f"{horas:.2f}"
         avisar(f"continuação acabou (código {continuacao.returncode}): "
                + (continuacao.stdout.strip().splitlines()[-2] if continuacao.stdout.strip() else continuacao.stderr[-300:]))
     else:
@@ -95,6 +110,7 @@ def main() -> int:
     docs = RAIZ / "docs" / "fase2" / "candidato"
     for nome, arquivo, saida in (("candidato", pasta / "modelo.npz", docs),
                                  ("mini", RAIZ / "dados" / "cerebro" / "modelo.npz", RAIZ / "docs" / "fase2" / "teto-mini")):
+        esperar_a_placa(avisar)
         medida = rodar([str(PYTHON), "-m", "kernel", "cerebro", "protocolo", "--modelo", str(arquivo), "--saida", str(saida)])
         relatorio = saida / "relatorio.json"
         if relatorio.exists():
