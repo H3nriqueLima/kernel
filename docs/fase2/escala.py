@@ -8,6 +8,8 @@ medido no teste fixo e o último passa pelo protocolo completo, sempre num proce
 
     python docs/fase2/escala.py --tamanhos mini medio pequeno grande
     python docs/fase2/escala.py --tamanhos pequeno --semente 2026     (a segunda semente do finalista)
+    python docs/fase2/escala.py --tamanhos grande --continuar         (continua um treino de comparação parado no
+                                                                       meio, com a taxa que ele teria sem a parada)
 """
 from __future__ import annotations
 
@@ -77,6 +79,8 @@ def main() -> int:
     analisador.add_argument("--tamanhos", nargs="+", required=True)
     analisador.add_argument("--semente", type=int, default=1337)
     analisador.add_argument("--passos", type=int, default=PASSOS)
+    analisador.add_argument("--continuar", action="store_true",
+                            help="continua do checkpoint da pasta (a sessão começou no passo 0), sem apagar nada")
     args = analisador.parse_args()
     marcos = [m for m in MARCOS if m <= args.passos] or [args.passos]
 
@@ -87,11 +91,15 @@ def main() -> int:
         nome = tamanho if args.semente == 1337 else f"{tamanho}-s{args.semente}"
         pasta = RAIZ / "dados" / "fase2" / "escala" / nome / "cerebro"
         docs = RAIZ / "docs" / "fase2" / "escala" / nome
-        preparar(pasta)
+        if not args.continuar:
+            preparar(pasta)
+        elif not (pasta / "checkpoint.pt").exists():
+            avisar(f"{nome}: não há checkpoint em {pasta} para continuar")
+            continue
         lote, acumular = LOTES[tamanho]
         comando = [str(PYTHON), "-m", "kernel", "cerebro", "treinar", "--tamanho", tamanho, "--sessao-passos",
                    str(args.passos), "--lote", str(lote), "--acumular", str(acumular), "--semente", str(args.semente),
-                   "--marcos", ",".join(map(str, marcos))]
+                   "--marcos", ",".join(map(str, marcos))] + (["--sessao-desde", "0"] if args.continuar else [])
         for tentativa in range(3):
             esperar_a_placa(avisar)
             avisar(f"{nome}: treinando ({' '.join(comando[3:])})")
@@ -104,8 +112,9 @@ def main() -> int:
             # faltou memória logo no começo: espera e tenta de novo; na terceira vez, com metade do lote
             # (o mesmo número de tokens por passo: a conta é a mesma, só cabe menos de uma vez)
             avisar(f"{nome}: faltou memória de vídeo no começo (tentativa {tentativa + 1}); tentando de novo")
-            preparar(pasta)
-            if tentativa == 1:
+            if not args.continuar:   # continuando, a pasta guarda o progresso: nada de apagar
+                preparar(pasta)
+            if tentativa == 1 and not args.continuar:   # a passada reparte os dados pelo lote: não muda no meio
                 lote, acumular = max(1, lote // 2), acumular * 2
                 comando[comando.index("--lote") + 1] = str(lote)
                 comando[comando.index("--acumular") + 1] = str(acumular)

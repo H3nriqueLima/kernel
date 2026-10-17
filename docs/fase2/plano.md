@@ -77,3 +77,6 @@ Em todos: contexto de 256, vocabulário de 4.096 e 8.192 tokens por passo.
   - **A validação interna do treino** (a que escolhe o modelo exportado e decide parar) fica com 40 janelas em vez de 80, porque o número de janelas acompanha o lote. As medidas da comparação não mudam: são do protocolo, no teste fixo.
   - **`LOTES` do grande** passa a 2 × 16, para a segunda semente e a continuação começarem com o lote que cabe.
   - **Consequência para o orçamento:** a comparação acaba por volta das 02:15 de 18/10. Se o grande for o finalista, a segunda semente leva outras ~15 h, e quase não sobra tempo de continuação dentro das 48 h.
+- **17/10, 20:31:** pausa a pedido do Henrique (a placa para jogar). O grande parou pelo pedido de parada do próprio treino, no passo 4.863 de 7.325, com o checkpoint salvo (pesos, otimizador, posição da passada). Os scripts foram desligados antes das medidas.
+  - **Retomada:** `escala.py --continuar` chama o treino com `--sessao-desde 0`. A taxa, a meta e a ordem dos dados seguem como seriam sem a pausa; um teste confere que uma sessão parada e retomada termina com os mesmos pesos da que não parou. As horas dos marcos contam só o tempo de treino.
+  - **Orçamento:** as 48 h são de placa, e a pausa não conta. Na retomada, o começo do orçamento é empurrado pela duração da pausa.

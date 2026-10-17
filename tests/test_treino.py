@@ -137,3 +137,39 @@ def test_marcos_guardam_os_pesos_e_a_hora(torch, tmp_path):
     linhas = [json.loads(l) for l in (tmp_path / "marcos" / "marcos.jsonl").read_text(encoding="utf-8").splitlines()]
     assert [l["passo"] for l in linhas] == [5, 12]
     assert linhas[1]["tokens"] == 12 * cfg.acumular * cfg.lote * 64 and linhas[1]["segundos"] >= linhas[0]["segundos"]
+
+
+def test_sessao_interrompida_continua_igual(torch, tmp_path):
+    """Fase 2: uma sessão parada no meio e continuada com --sessao-desde termina igual à que não parou."""
+    import shutil
+
+    from kernel.cerebro.treinar import CHECKPOINT, ConfigTreino, treinar
+
+    def sessao(**extra):
+        return ConfigTreino(tamanho="nano", lote=4, aquecimento=2, avaliar_cada=7, lotes_de_avaliacao=1,
+                            dispositivo="cpu", taxa=3e-3, sessao_passos=12, **extra)
+
+    inteira, partida = tmp_path / "inteira", tmp_path / "partida"
+    inteira.mkdir()
+    _cerebro_pequeno(inteira)
+    shutil.copytree(inteira, partida)
+    treinar(inteira, sessao(), avisar=lambda _: None)
+
+    def parar_no_passo_7(texto):   # o ponto de controle do passo 7 avisa; o pedido de parada vale no passo seguinte
+        if texto.lstrip().startswith("validação"):
+            (partida / "PARAR").touch()
+
+    assert treinar(partida, sessao(), avisar=parar_no_passo_7)["passo"] == 7
+    avisos = []
+    resumo = treinar(partida, sessao(sessao_desde=0), avisar=avisos.append)
+    assert resumo["passo"] == 12 and resumo["motivo"] == "meta"
+    assert any("continuando a sessão que começou no passo 0" in a for a in avisos)
+    assert not any("sem reaquecer" in a for a in avisos)
+    a = torch.load(inteira / CHECKPOINT, weights_only=True)
+    b = torch.load(partida / CHECKPOINT, weights_only=True)
+    assert a["taxa"] == b["taxa"] and b["sessao"] == {"desde": 0, "passos": 12}
+    assert a["amostrador"] == b["amostrador"]
+    assert max(float((a["modelo"][n] - b["modelo"][n]).abs().max()) for n in a["modelo"]) < 1e-6
+
+    with pytest.raises(ValueError):   # passou do fim da sessão: não há o que continuar
+        treinar(partida, sessao(sessao_desde=0), avisar=lambda _: None)

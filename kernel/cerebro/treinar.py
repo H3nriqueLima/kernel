@@ -106,6 +106,7 @@ class ConfigTreino:
     ao_continuar: str = "retomar"
     amostragem: str = "passada"        # "passada" (o treino inteiro, sem repetir) ou "sorteio" (com reposição, em pedaços)
     sessao_passos: int | None = None   # uma sessão de N passos com o formato de uma sessão em horas (comparável)
+    sessao_desde: int | None = None    # continua uma sessão de passos interrompida: o passo em que ela começou
     parar_se_estagnar: int = 0         # N > 0: para se a validação não melhorar ``melhora_minima`` em N medidas
     marcos: tuple = ()                 # passos em que os pesos são guardados em marcos/ (para curvas de aprendizado)
     melhora_minima: float = 0.002
@@ -298,9 +299,16 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
                f"medida nela: {melhor:.4f}")
     por_passos = cfg.sessao_passos is not None               # uma sessão de N passos, no formato de uma em horas
     por_horas = (cfg.passos is None and bool(cfg.horas)) or por_passos   # sessões: a taxa segue o formato da sessão
-    meta = passo + cfg.sessao_passos if por_passos else (None if por_horas else (cfg.passos or PASSOS_SEM_META))
-    passo_inicial = passo
+    # Uma sessão de passos interrompida (o pedido de parada, a placa emprestada) continua com a taxa e a meta
+    # que teria sem a parada: a sessão é contada do passo em que começou, não do de agora.
+    passo_inicial = passo if cfg.sessao_desde is None else cfg.sessao_desde
+    if cfg.sessao_desde is not None and not (por_passos and cfg.sessao_desde <= passo < cfg.sessao_desde + cfg.sessao_passos):
+        raise ValueError(f"--sessao-desde {cfg.sessao_desde} não continua uma sessão de --sessao-passos "
+                         f"{cfg.sessao_passos} a partir do passo {passo}")
+    meta = passo_inicial + cfg.sessao_passos if por_passos else (None if por_horas else (cfg.passos or PASSOS_SEM_META))
     retomar = passo_inicial > 0 and por_horas and cfg.ao_continuar == "retomar"
+    if cfg.sessao_desde is not None:
+        avisar(f"continuando a sessão que começou no passo {passo_inicial}: a taxa segue de onde estava, até o passo {meta}")
     if passo:
         avisar(f"continuando do passo {passo} (melhor perda de validação até aqui: {melhor:.3f})")
     if retomar:
@@ -354,7 +362,8 @@ def treinar(pasta: Path, cfg: ConfigTreino, avisar=print) -> dict:
                                 "segundos": round(segundos_antes + time.time() - inicio, 1)}) + "\n")
 
     def estado_extra() -> dict:
-        return {"taxa": taxa, **({"amostrador": treino.estado()} if hasattr(treino, "estado") else {})}
+        return {"taxa": taxa, **({"amostrador": treino.estado()} if hasattr(treino, "estado") else {}),
+                **({"sessao": {"desde": passo_inicial, "passos": cfg.sessao_passos}} if por_passos else {})}
 
     inicio = time.time()
     limite = inicio + cfg.horas * 3600 if cfg.horas else None

@@ -367,8 +367,8 @@ def cerebro(args) -> int:
         treino = ConfigTreino(tamanho=tamanho, passos=args.passos, horas=args.horas,
                               lote=args.lote or lote, acumular=args.acumular or acumular, taxa=args.taxa,
                               avaliar_cada=args.avaliar_cada, dispositivo=args.dispositivo or cfg.cerebro.dispositivo)
-        for opcao in ("ao_continuar", "sessao_passos", "parar_se_estagnar", "melhora_minima", "semente", "corte_gradiente",
-                      "amostragem"):
+        for opcao in ("ao_continuar", "sessao_passos", "sessao_desde", "parar_se_estagnar", "melhora_minima", "semente",
+                      "corte_gradiente", "amostragem"):
             if getattr(args, opcao, None) is not None:
                 setattr(treino, opcao, getattr(args, opcao))
         if getattr(args, "marcos", None):
@@ -675,6 +675,8 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--ao-continuar", dest="ao_continuar", choices=["reaquecer", "retomar"],
                    help="numa sessão que continua: reaquecer a taxa ou seguir com a taxa baixa e constante")
     a.add_argument("--sessao-passos", dest="sessao_passos", type=int, help="uma sessão de N passos (para comparar)")
+    a.add_argument("--sessao-desde", dest="sessao_desde", type=int,
+                   help="continua uma sessão de passos interrompida que começou no passo N (a mesma taxa que ela teria)")
     a.add_argument("--parar-se-estagnar", dest="parar_se_estagnar", type=int,
                    help="para se a validação não melhorar em N medidas seguidas")
     a.add_argument("--melhora-minima", dest="melhora_minima", type=float, help="o que conta como melhora (padrão 0,002)")
