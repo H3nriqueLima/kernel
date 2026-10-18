@@ -54,6 +54,8 @@ def main() -> int:
     analisador = argparse.ArgumentParser()
     analisador.add_argument("--inicio", required=True, help="quando a fase começou a usar a placa")
     analisador.add_argument("--orcamento", type=float, default=48.0)
+    analisador.add_argument("--continuar-candidato", action="store_true",
+                            help="a continuação foi pausada: segue da pasta do candidato como está, sem prepará-la de novo")
     analisador.add_argument("--sem-segunda-semente", action="store_true",
                             help="pula a segunda semente (decisão do Henrique em 18/10: o resto do orçamento vai para a continuação)")
     args = analisador.parse_args()
@@ -83,12 +85,19 @@ def main() -> int:
     from kernel.cerebro.gpt import LOTES
     origem = RAIZ / "dados" / "fase2" / "escala" / finalista / "cerebro"
     pasta = RAIZ / "dados" / "fase2" / "candidato" / "cerebro"
-    preparar(pasta)
-    for nome in ("checkpoint.pt", "checkpoint.pt.sha256", "treino.log", "treino.csv"):
-        shutil.copy2(origem / nome, pasta / nome)
-    marco = origem / "marcos" / "passo-7325.npz"   # o modelo exportado de partida: o do último passo (60 mi)
-    shutil.copy2(marco, pasta / "modelo.npz")
-    shutil.copy2(Path(str(marco) + ".sha256"), pasta / "modelo.npz.sha256")
+    if args.continuar_candidato:
+        # preparar() apagaria o que a continuação já andou: segue do checkpoint que a pausa salvou
+        if not (pasta / "checkpoint.pt").exists():
+            avisar(f"não há checkpoint em {pasta} para continuar")
+            return 1
+        avisar("a continuação do candidato segue de onde parou")
+    else:
+        preparar(pasta)
+        for nome in ("checkpoint.pt", "checkpoint.pt.sha256", "treino.log", "treino.csv"):
+            shutil.copy2(origem / nome, pasta / nome)
+        marco = origem / "marcos" / "passo-7325.npz"   # o modelo exportado de partida: o do último passo (60 mi)
+        shutil.copy2(marco, pasta / "modelo.npz")
+        shutil.copy2(Path(str(marco) + ".sha256"), pasta / "modelo.npz.sha256")
     # o orçamento pode ter mudado enquanto a segunda semente rodava (só o Henrique muda): dados/fase2/orcamento.txt
     orcamento, arquivo_orcamento = args.orcamento, RAIZ / "dados" / "fase2" / "orcamento.txt"
     if arquivo_orcamento.exists():
