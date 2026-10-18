@@ -213,13 +213,16 @@ def grafico(series: list[dict], refs: list[tuple[float, str]], titulo: str, rotu
     o.append(f'<text x="{(x0 + x1) / 2}" y="{altura - 14}" font-size="12" fill="{TINTA_2}" text-anchor="middle">{rotulo_x}</text>')
     o.append(f'<text transform="translate(16 {(y0 + y1) / 2}) rotate(-90)" font-size="12" fill="{TINTA_2}" '
              f'text-anchor="middle">{rotulo_y}</text>')
-    # referências: tracejadas e apagadas, com o nome no começo da linha
+    # referências: tracejadas e apagadas, com o nome no começo da linha (os nomes vão por cima das curvas)
+    nomes_das_referencias = []
     for i, (valor, nome) in enumerate(sorted(refs, reverse=True)):
         o.append(f'<line x1="{x0}" y1="{py(valor):.1f}" x2="{x1}" y2="{py(valor):.1f}" stroke="{APAGADA}" '
                  f'stroke-width="1" stroke-dasharray="3 3"/>')
         # a mais baixa leva o nome embaixo da linha: o teto e o critério ficam a 0,05 um do outro
         y_nome = py(valor) + 14 if i == len(refs) - 1 and len(refs) > 1 else py(valor) - 5
-        o.append(f'<text x="{x0 + 6}" y="{y_nome:.1f}" font-size="11" fill="{TINTA_2}">{nome} {br(valor)}</text>')
+        # contorno da cor do fundo: uma linha que passe por cima não apaga o nome
+        nomes_das_referencias.append(f'<text x="{x0 + 6}" y="{y_nome:.1f}" font-size="11" fill="{TINTA_2}" '
+                                     f'stroke="{FUNDO}" stroke-width="3" paint-order="stroke">{nome} {br(valor)}</text>')
     # as linhas, com um marcador por medida (a dica mostra o número ao passar o mouse)
     finais = []
     for s in series:
@@ -232,13 +235,16 @@ def grafico(series: list[dict], refs: list[tuple[float, str]], titulo: str, rotu
                 o.append(f'<circle cx="{px(a):.1f}" cy="{py(b):.1f}" r="{raio}" fill="{s["cor"]}" stroke="{FUNDO}" '
                          f'stroke-width="2"><title>{dica}</title></circle>')
         a, b, _ = s["pontos"][-1]
-        finais.append([py(b), px(a), f'{s["nome"]} {br(b)}'])
+        finais.append([py(b), px(a), f'{s["nome"]} {br(b)}', s["cor"]])
+    o.extend(nomes_das_referencias)
     # rótulos diretos no fim de cada linha, afastados para não se encostarem
     finais.sort()
     for i in range(1, len(finais)):
         finais[i][0] = max(finais[i][0], finais[i - 1][0] + 15)
-    for y_rotulo, x_fim, texto in finais:
-        o.append(f'<text x="{max(x_fim, x1) + 10:.1f}" y="{y_rotulo + 4:.1f}" font-size="12" fill="{TINTA}">{texto}</text>')
+    for y_rotulo, x_fim, texto, cor in finais:   # o ponto da cor liga o rótulo à linha; o texto fica na tinta
+        x_rotulo = max(x_fim, x1) + 10
+        o.append(f'<circle cx="{x_rotulo + 3:.1f}" cy="{y_rotulo:.1f}" r="3.5" fill="{cor}"/>')
+        o.append(f'<text x="{x_rotulo + 11:.1f}" y="{y_rotulo + 4:.1f}" font-size="12" fill="{TINTA}">{texto}</text>')
     o.append("</svg>")
     arquivo.write_text("\n".join(o) + "\n", encoding="utf-8")
 

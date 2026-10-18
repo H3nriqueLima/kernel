@@ -1,0 +1,366 @@
+{
+ "observacao": "'medido' saiu do protocolo (teste fixo, 2 mi de tokens); 'estimado' é uma reta entre dois marcos medidos. Os marcos do meio são do meio do cosseno, com a taxa ainda alta: só o de 60 mi terminou de descer a taxa. Por isso a comparação em horas iguais favorece o mini, que é o único a chegar no fim do cosseno nesse tempo.",
+ "referencias": {
+  "teto_mini": 3.03598,
+  "criterio": 2.986,
+  "trigrama": 3.7187974036319495,
+  "bigrama": 4.602570183727369,
+  "bits_por_byte_por_nat": 0.4457670999150192,
+  "teto_arquivo": "relatorio.json"
+ },
+ "series": [
+  {
+   "nome": "mini",
+   "tamanho": "mini",
+   "semente": 1337,
+   "parametros": 3505152,
+   "pontos": [
+    {
+     "passo": 1221,
+     "tokens": 10002432,
+     "horas": 0.39905555555555555,
+     "teste": 4.52022,
+     "bits_por_byte": 2.01496,
+     "validacao": 4.53832,
+     "origem": "medido"
+    },
+    {
+     "passo": 2442,
+     "tokens": 20004864,
+     "horas": 0.7969444444444445,
+     "teste": 4.09088,
+     "bits_por_byte": 1.82358,
+     "validacao": 4.11506,
+     "origem": "medido"
+    },
+    {
+     "passo": 3663,
+     "tokens": 30007296,
+     "horas": 1.1963055555555555,
+     "teste": 3.81216,
+     "bits_por_byte": 1.69934,
+     "validacao": 3.83743,
+     "origem": "medido"
+    },
+    {
+     "passo": 4883,
+     "tokens": 40001536,
+     "horas": 1.5931666666666666,
+     "teste": 3.6383,
+     "bits_por_byte": 1.62184,
+     "validacao": 3.66317,
+     "origem": "medido"
+    },
+    {
+     "passo": 6104,
+     "tokens": 50003968,
+     "horas": 1.9926388888888888,
+     "teste": 3.54953,
+     "bits_por_byte": 1.58226,
+     "validacao": 3.57443,
+     "origem": "medido"
+    },
+    {
+     "passo": 7325,
+     "tokens": 60006400,
+     "horas": 2.3901944444444445,
+     "teste": 3.50054,
+     "bits_por_byte": 1.56043,
+     "validacao": 3.52588,
+     "origem": "medido"
+    }
+   ]
+  },
+  {
+   "nome": "medio",
+   "tamanho": "medio",
+   "semente": 1337,
+   "parametros": 11256960,
+   "pontos": [
+    {
+     "passo": 1221,
+     "tokens": 10002432,
+     "horas": 0.8199722222222222,
+     "teste": 4.32562,
+     "bits_por_byte": 1.92822,
+     "validacao": 4.34784,
+     "origem": "medido"
+    },
+    {
+     "passo": 2442,
+     "tokens": 20004864,
+     "horas": 1.6374722222222222,
+     "teste": 3.80928,
+     "bits_por_byte": 1.69805,
+     "validacao": 3.82934,
+     "origem": "medido"
+    },
+    {
+     "passo": 3663,
+     "tokens": 30007296,
+     "horas": 2.4580555555555557,
+     "teste": 3.52305,
+     "bits_por_byte": 1.57046,
+     "validacao": 3.54677,
+     "origem": "medido"
+    },
+    {
+     "passo": 4883,
+     "tokens": 40001536,
+     "horas": 3.2757500000000004,
+     "teste": 3.36722,
+     "bits_por_byte": 1.501,
+     "validacao": 3.39036,
+     "origem": "medido"
+    },
+    {
+     "passo": 6104,
+     "tokens": 50003968,
+     "horas": 4.09625,
+     "teste": 3.27238,
+     "bits_por_byte": 1.45872,
+     "validacao": 3.29645,
+     "origem": "medido"
+    },
+    {
+     "passo": 7325,
+     "tokens": 60006400,
+     "horas": 4.91538888888889,
+     "teste": 3.22411,
+     "bits_por_byte": 1.4372,
+     "validacao": 3.24822,
+     "origem": "medido"
+    }
+   ]
+  },
+  {
+   "nome": "pequeno",
+   "tamanho": "pequeno",
+   "semente": 1337,
+   "parametros": 15867648,
+   "pontos": [
+    {
+     "passo": 1221,
+     "tokens": 10002432,
+     "horas": 0.9432777777777779,
+     "teste": 4.30268,
+     "bits_por_byte": 1.918,
+     "validacao": 4.31799,
+     "origem": "medido"
+    },
+    {
+     "passo": 2442,
+     "tokens": 20004864,
+     "horas": 1.8847222222222222,
+     "teste": 3.79569,
+     "bits_por_byte": 1.69199,
+     "validacao": 3.81568,
+     "origem": "medido"
+    },
+    {
+     "passo": 3663,
+     "tokens": 30007296,
+     "horas": 2.8279722222222223,
+     "teste": 3.48765,
+     "bits_por_byte": 1.55468,
+     "validacao": 3.51001,
+     "origem": "medido"
+    },
+    {
+     "passo": 4883,
+     "tokens": 40001536,
+     "horas": 3.7707222222222225,
+     "teste": 3.31581,
+     "bits_por_byte": 1.47808,
+     "validacao": 3.33694,
+     "origem": "medido"
+    },
+    {
+     "passo": 6104,
+     "tokens": 50003968,
+     "horas": 4.7306944444444445,
+     "teste": 3.2229,
+     "bits_por_byte": 1.43666,
+     "validacao": 3.24594,
+     "origem": "medido"
+    },
+    {
+     "passo": 7325,
+     "tokens": 60006400,
+     "horas": 5.674833333333334,
+     "teste": 3.16822,
+     "bits_por_byte": 1.41229,
+     "validacao": 3.19222,
+     "origem": "medido"
+    }
+   ]
+  },
+  {
+   "nome": "grande",
+   "tamanho": "grande",
+   "semente": 1337,
+   "parametros": 40057856,
+   "pontos": [
+    {
+     "passo": 1221,
+     "tokens": 10002432,
+     "horas": 2.3690277777777777,
+     "teste": 4.22123,
+     "bits_por_byte": 1.88169,
+     "validacao": 4.24092,
+     "origem": "medido"
+    },
+    {
+     "passo": 2442,
+     "tokens": 20004864,
+     "horas": 4.728694444444444,
+     "teste": 3.65838,
+     "bits_por_byte": 1.63078,
+     "validacao": 3.68114,
+     "origem": "medido"
+    },
+    {
+     "passo": 3663,
+     "tokens": 30007296,
+     "horas": 7.1045,
+     "teste": 3.37951,
+     "bits_por_byte": 1.50648,
+     "validacao": 3.40251,
+     "origem": "medido"
+    },
+    {
+     "passo": 4883,
+     "tokens": 40001536,
+     "horas": 9.482472222222222,
+     "teste": 3.20519,
+     "bits_por_byte": 1.42877,
+     "validacao": 3.23074,
+     "origem": "medido"
+    },
+    {
+     "passo": 6104,
+     "tokens": 50003968,
+     "horas": 11.846416666666666,
+     "teste": 3.10198,
+     "bits_por_byte": 1.38276,
+     "validacao": 3.12714,
+     "origem": "medido"
+    },
+    {
+     "passo": 7325,
+     "tokens": 60006400,
+     "horas": 14.209055555555555,
+     "teste": 3.05243,
+     "bits_por_byte": 1.36067,
+     "validacao": 3.07743,
+     "origem": "medido"
+    }
+   ]
+  }
+ ],
+ "comparacoes": {
+  "tokens_iguais": {
+   "tokens": 60006400,
+   "tamanhos": [
+    {
+     "nome": "mini",
+     "parametros": 3505152,
+     "teste": 3.50054,
+     "bits_por_byte": 1.5604,
+     "origem": "medido",
+     "contra_trigrama": -0.2183,
+     "contra_teto_mini": 0.4646,
+     "contra_mini_mesmos_tokens": 0.0
+    },
+    {
+     "nome": "medio",
+     "parametros": 11256960,
+     "teste": 3.22411,
+     "bits_por_byte": 1.4372,
+     "origem": "medido",
+     "contra_trigrama": -0.4947,
+     "contra_teto_mini": 0.1881,
+     "contra_mini_mesmos_tokens": -0.2764
+    },
+    {
+     "nome": "pequeno",
+     "parametros": 15867648,
+     "teste": 3.16822,
+     "bits_por_byte": 1.4123,
+     "origem": "medido",
+     "contra_trigrama": -0.5506,
+     "contra_teto_mini": 0.1322,
+     "contra_mini_mesmos_tokens": -0.3323
+    },
+    {
+     "nome": "grande",
+     "parametros": 40057856,
+     "teste": 3.05243,
+     "bits_por_byte": 1.3607,
+     "origem": "medido",
+     "contra_trigrama": -0.6664,
+     "contra_teto_mini": 0.0165,
+     "contra_mini_mesmos_tokens": -0.4481
+    }
+   ]
+  },
+  "horas_iguais": [
+   {
+    "nome": "mini",
+    "horas": 2.39,
+    "teste": 3.50054,
+    "origem": "medido"
+   },
+   {
+    "nome": "medio",
+    "horas": 2.39,
+    "teste": 3.54672,
+    "origem": "estimado"
+   },
+   {
+    "nome": "pequeno",
+    "horas": 2.39,
+    "teste": 3.63062,
+    "origem": "estimado"
+   },
+   {
+    "nome": "grande",
+    "horas": 2.39,
+    "teste": 4.21618,
+    "origem": "estimado"
+   }
+  ],
+  "ate_a_perda_final_do_mini": [
+   {
+    "nome": "mini",
+    "perda": 3.50054,
+    "horas": 2.39,
+    "tokens": 60006400,
+    "origem": "medido"
+   },
+   {
+    "nome": "medio",
+    "perda": 3.50054,
+    "horas": 2.576,
+    "tokens": 31450987,
+    "origem": "estimado"
+   },
+   {
+    "nome": "pequeno",
+    "perda": 3.50054,
+    "horas": 2.789,
+    "tokens": 29588742,
+    "origem": "estimado"
+   },
+   {
+    "nome": "grande",
+    "perda": 3.50054,
+    "horas": 6.073,
+    "tokens": 25666225,
+    "origem": "estimado"
+   }
+  ],
+  "segunda_semente": []
+ },
+ "continuacao": null
+}

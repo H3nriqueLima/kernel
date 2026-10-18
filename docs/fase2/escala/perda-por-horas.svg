@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 440" width="760" height="440" font-family='system-ui, -apple-system, "Segoe UI", sans-serif' role="img" aria-label="Perda no teste fixo por horas de placa">
+<rect width="760" height="440" fill="#fcfcfb"/>
+<text x="18" y="24" font-size="15" font-weight="600" fill="#0b0b0b">Perda no teste fixo por horas de placa</text>
+<line x1="18" y1="46" x2="40" y2="46" stroke="#2a78d6" stroke-width="2.5"/>
+<text x="46" y="50" font-size="12" fill="#52514e">mini</text>
+<line x1="86" y1="46" x2="108" y2="46" stroke="#eb6834" stroke-width="2.5"/>
+<text x="114" y="50" font-size="12" fill="#52514e">medio</text>
+<line x1="161" y1="46" x2="183" y2="46" stroke="#1baf7a" stroke-width="2.5"/>
+<text x="189" y="50" font-size="12" fill="#52514e">pequeno</text>
+<line x1="250" y1="46" x2="272" y2="46" stroke="#eda100" stroke-width="2.5"/>
+<text x="278" y="50" font-size="12" fill="#52514e">grande</text>
+<line x1="70" y1="384.0" x2="590" y2="384.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="388.0" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">2,80</text>
+<line x1="70" y1="349.6" x2="590" y2="349.6" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="353.6" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">3,00</text>
+<line x1="70" y1="315.1" x2="590" y2="315.1" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="319.1" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">3,20</text>
+<line x1="70" y1="280.7" x2="590" y2="280.7" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="284.7" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">3,40</text>
+<line x1="70" y1="246.2" x2="590" y2="246.2" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="250.2" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">3,60</text>
+<line x1="70" y1="211.8" x2="590" y2="211.8" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="215.8" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">3,80</text>
+<line x1="70" y1="177.3" x2="590" y2="177.3" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="181.3" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">4,00</text>
+<line x1="70" y1="142.9" x2="590" y2="142.9" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="146.9" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">4,20</text>
+<line x1="70" y1="108.4" x2="590" y2="108.4" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="112.4" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">4,40</text>
+<line x1="70" y1="74.0" x2="590" y2="74.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="78.0" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">4,60</text>
+<text x="70.0" y="402" font-size="11" fill="#898781" text-anchor="middle" style="font-variant-numeric: tabular-nums">0</text>
+<text x="243.3" y="402" font-size="11" fill="#898781" text-anchor="middle" style="font-variant-numeric: tabular-nums">5</text>
+<text x="416.7" y="402" font-size="11" fill="#898781" text-anchor="middle" style="font-variant-numeric: tabular-nums">10</text>
+<text x="590.0" y="402" font-size="11" fill="#898781" text-anchor="middle" style="font-variant-numeric: tabular-nums">15</text>
+<line x1="70" y1="384" x2="590" y2="384" stroke="#c3c2b7" stroke-width="1"/>
+<text x="330.0" y="426" font-size="12" fill="#52514e" text-anchor="middle">horas de treino na RX 570 (sem as medidas)</text>
+<text transform="translate(16 229.0) rotate(-90)" font-size="12" fill="#52514e" text-anchor="middle">nats por token (menor é melhor)</text>
+<line x1="70" y1="225.8" x2="590" y2="225.8" stroke="#898781" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="70" y1="343.4" x2="590" y2="343.4" stroke="#898781" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="70" y1="352.0" x2="590" y2="352.0" stroke="#898781" stroke-width="1" stroke-dasharray="3 3"/>
+<path d="M83.8,87.7 L97.6,161.7 L111.5,209.7 L125.2,239.6 L139.1,254.9 L152.9,263.4" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="83.8" cy="87.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>mini: 10 mi de tokens, 0,40 h, teste 4,520 (2,015 bits por byte), medido</title></circle>
+<circle cx="97.6" cy="161.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>mini: 20 mi de tokens, 0,80 h, teste 4,091 (1,824 bits por byte), medido</title></circle>
+<circle cx="111.5" cy="209.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>mini: 30 mi de tokens, 1,20 h, teste 3,812 (1,699 bits por byte), medido</title></circle>
+<circle cx="125.2" cy="239.6" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>mini: 40 mi de tokens, 1,59 h, teste 3,638 (1,622 bits por byte), medido</title></circle>
+<circle cx="139.1" cy="254.9" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>mini: 50 mi de tokens, 1,99 h, teste 3,550 (1,582 bits por byte), medido</title></circle>
+<circle cx="152.9" cy="263.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>mini: 60 mi de tokens, 2,39 h, teste 3,501 (1,560 bits por byte), medido</title></circle>
+<path d="M98.4,121.3 L126.8,210.2 L155.2,259.5 L183.6,286.3 L212.0,302.6 L240.4,311.0" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="98.4" cy="121.3" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>medio: 10 mi de tokens, 0,82 h, teste 4,326 (1,928 bits por byte), medido</title></circle>
+<circle cx="126.8" cy="210.2" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>medio: 20 mi de tokens, 1,64 h, teste 3,809 (1,698 bits por byte), medido</title></circle>
+<circle cx="155.2" cy="259.5" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>medio: 30 mi de tokens, 2,46 h, teste 3,523 (1,570 bits por byte), medido</title></circle>
+<circle cx="183.6" cy="286.3" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>medio: 40 mi de tokens, 3,28 h, teste 3,367 (1,501 bits por byte), medido</title></circle>
+<circle cx="212.0" cy="302.6" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>medio: 50 mi de tokens, 4,10 h, teste 3,272 (1,459 bits por byte), medido</title></circle>
+<circle cx="240.4" cy="311.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>medio: 60 mi de tokens, 4,92 h, teste 3,224 (1,437 bits por byte), medido</title></circle>
+<path d="M102.7,125.2 L135.3,212.5 L168.0,265.6 L200.7,295.2 L234.0,311.2 L266.7,320.6" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="102.7" cy="125.2" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>pequeno: 10 mi de tokens, 0,94 h, teste 4,303 (1,918 bits por byte), medido</title></circle>
+<circle cx="135.3" cy="212.5" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>pequeno: 20 mi de tokens, 1,88 h, teste 3,796 (1,692 bits por byte), medido</title></circle>
+<circle cx="168.0" cy="265.6" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>pequeno: 30 mi de tokens, 2,83 h, teste 3,488 (1,555 bits por byte), medido</title></circle>
+<circle cx="200.7" cy="295.2" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>pequeno: 40 mi de tokens, 3,77 h, teste 3,316 (1,478 bits por byte), medido</title></circle>
+<circle cx="234.0" cy="311.2" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>pequeno: 50 mi de tokens, 4,73 h, teste 3,223 (1,437 bits por byte), medido</title></circle>
+<circle cx="266.7" cy="320.6" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>pequeno: 60 mi de tokens, 5,67 h, teste 3,168 (1,412 bits por byte), medido</title></circle>
+<path d="M152.1,139.2 L233.9,236.2 L316.3,284.2 L398.7,314.2 L480.7,332.0 L562.6,340.5" fill="none" stroke="#eda100" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="152.1" cy="139.2" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 10 mi de tokens, 2,37 h, teste 4,221 (1,882 bits por byte), medido</title></circle>
+<circle cx="233.9" cy="236.2" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 20 mi de tokens, 4,73 h, teste 3,658 (1,631 bits por byte), medido</title></circle>
+<circle cx="316.3" cy="284.2" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 30 mi de tokens, 7,10 h, teste 3,380 (1,506 bits por byte), medido</title></circle>
+<circle cx="398.7" cy="314.2" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 40 mi de tokens, 9,48 h, teste 3,205 (1,429 bits por byte), medido</title></circle>
+<circle cx="480.7" cy="332.0" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 50 mi de tokens, 11,85 h, teste 3,102 (1,383 bits por byte), medido</title></circle>
+<circle cx="562.6" cy="340.5" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 60 mi de tokens, 14,21 h, teste 3,052 (1,361 bits por byte), medido</title></circle>
+<text x="76" y="220.8" font-size="11" fill="#52514e" stroke="#fcfcfb" stroke-width="3" paint-order="stroke">trigrama contado 3,719</text>
+<text x="76" y="338.4" font-size="11" fill="#52514e" stroke="#fcfcfb" stroke-width="3" paint-order="stroke">teto do mini 3,036</text>
+<text x="76" y="366.0" font-size="11" fill="#52514e" stroke="#fcfcfb" stroke-width="3" paint-order="stroke">critério 2,986</text>
+<circle cx="603.0" cy="263.4" r="3.5" fill="#2a78d6"/>
+<text x="611.0" y="267.4" font-size="12" fill="#0b0b0b">mini 3,501</text>
+<circle cx="603.0" cy="311.0" r="3.5" fill="#eb6834"/>
+<text x="611.0" y="315.0" font-size="12" fill="#0b0b0b">medio 3,224</text>
+<circle cx="603.0" cy="326.0" r="3.5" fill="#1baf7a"/>
+<text x="611.0" y="330.0" font-size="12" fill="#0b0b0b">pequeno 3,168</text>
+<circle cx="603.0" cy="341.0" r="3.5" fill="#eda100"/>
+<text x="611.0" y="345.0" font-size="12" fill="#0b0b0b">grande 3,052</text>
+</svg>
