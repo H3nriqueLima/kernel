@@ -54,6 +54,8 @@ def main() -> int:
     analisador = argparse.ArgumentParser()
     analisador.add_argument("--inicio", required=True, help="quando a fase começou a usar a placa")
     analisador.add_argument("--orcamento", type=float, default=48.0)
+    analisador.add_argument("--sem-segunda-semente", action="store_true",
+                            help="pula a segunda semente (decisão do Henrique em 18/10: o resto do orçamento vai para a continuação)")
     args = analisador.parse_args()
     inicio = datetime.strptime(args.inicio, "%Y-%m-%d %H:%M")
     log = RAIZ / "dados" / "fase2" / "escala.log"
@@ -69,9 +71,13 @@ def main() -> int:
     (ESCALA.parent / "finalista.json").write_text(json.dumps({"finalista": finalista, "perdas_60mi": perdas},
                                                              indent=1), encoding="utf-8")
 
-    avisar(f"segunda semente do {finalista}")
-    semente = rodar([str(PYTHON), str(RAIZ / "docs" / "fase2" / "escala.py"), "--tamanhos", finalista, "--semente", "2026"])
-    avisar("segunda semente: " + (semente.stdout.strip().splitlines()[-2] if semente.stdout.strip() else semente.stderr[-300:]))
+    if args.sem_segunda_semente:
+        avisar(f"segunda semente do {finalista} cancelada (o checkpoint parcial fica em dados/fase2/escala/{finalista}-s2026)")
+    else:
+        avisar(f"segunda semente do {finalista}")
+        semente = rodar([str(PYTHON), str(RAIZ / "docs" / "fase2" / "escala.py"), "--tamanhos", finalista, "--semente", "2026"])
+        linhas = semente.stdout.strip().splitlines()
+        avisar("segunda semente: " + (linhas[-2] if len(linhas) >= 2 else semente.stderr[-300:]))
 
     from escala import esperar_a_placa, preparar
     from kernel.cerebro.gpt import LOTES
