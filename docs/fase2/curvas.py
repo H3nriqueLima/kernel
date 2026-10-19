@@ -132,12 +132,14 @@ def comparar(series: list[dict], refs: dict) -> dict:
         if s["semente"] != 1337:
             base = next((b for b in principais if b["tamanho"] == s["tamanho"]), None)
             if base:
-                a, b = base["pontos"][-1], s["pontos"][-1]
-                linha = {"tamanho": s["tamanho"], "tokens": b["tokens"], "semente_1337": a["teste"],
-                         f"semente_{s['semente']}": b["teste"], "diferenca": round(abs(a["teste"] - b["teste"]), 5)}
+                b = s["pontos"][-1]   # o último ponto da segunda semente, e a primeira no mesmo número de tokens
+                a, origem = interpolar(base["pontos"], "tokens", b["tokens"], "teste")
+                linha = {"tamanho": s["tamanho"], "tokens": b["tokens"], "semente_1337": round(a, 5),
+                         f"semente_{s['semente']}": b["teste"], "diferenca": round(abs(a - b["teste"]), 5), "origem": origem}
                 if mini:
-                    linha["vantagem_sobre_o_mini"] = {str(base["semente"]): round(mini["pontos"][-1]["teste"] - a["teste"], 4),
-                                                      str(s["semente"]): round(mini["pontos"][-1]["teste"] - b["teste"], 4)}
+                    do_mini = interpolar(mini["pontos"], "tokens", b["tokens"], "teste")[0]
+                    linha["vantagem_sobre_o_mini"] = {str(base["semente"]): round(do_mini - a, 4),
+                                                      str(s["semente"]): round(do_mini - b["teste"], 4)}
                 sementes.append(linha)
     return {"tokens_iguais": {"tokens": tokens, "tamanhos": iguais_tokens},
             "horas_iguais": iguais_horas, "ate_a_perda_final_do_mini": ate_a_perda_do_mini, "segunda_semente": sementes}
@@ -152,10 +154,18 @@ def ler_continuacao() -> dict | None:
     with open(arquivo, encoding="utf-8") as f:
         linhas = [l for l in csv.DictReader(f) if l["perda_val"]]
     pontos = [{"passo": int(l["passo"]), "tokens": int(l["passo"]) * TOKENS_POR_PASSO,
-               "horas": float(l["segundos"]) / 3600, "validacao_80_janelas": float(l["perda_val"])} for l in linhas]
+               "horas": float(l["segundos"]) / 3600, "validacao_do_treino": float(l["perda_val"])} for l in linhas]
     if not pontos or pontos[-1]["passo"] <= 7325:
         return None
-    return {"tamanho": json.loads(finalista.read_text(encoding="utf-8"))["finalista"], "pontos": pontos}
+    candidato, relatorio = None, RAIZ / "docs" / "fase2" / "candidato" / "relatorio.json"
+    if relatorio.exists():
+        # o modelo exportado é o de melhor validação interna (o treino só exporta quando ela melhora)
+        melhor = min((p for p in pontos if p["passo"] > 7325), key=lambda p: p["validacao_do_treino"])
+        teste = json.loads(relatorio.read_text(encoding="utf-8"))["perdas"]["teste"]   # só as perdas
+        candidato = {"passo": melhor["passo"], "tokens": melhor["tokens"], "teste": teste["perda"],
+                     "bits_por_byte": teste["bits_por_byte"], "origem": "medido"}
+    return {"tamanho": json.loads(finalista.read_text(encoding="utf-8"))["finalista"], "pontos": pontos,
+            "candidato": candidato}
 
 
 # --- os gráficos (SVG à mão: o projeto não depende de biblioteca de gráficos) -----------------------
@@ -235,7 +245,8 @@ def grafico(series: list[dict], refs: list[tuple[float, str]], titulo: str, rotu
                 o.append(f'<circle cx="{px(a):.1f}" cy="{py(b):.1f}" r="{raio}" fill="{s["cor"]}" stroke="{FUNDO}" '
                          f'stroke-width="2"><title>{dica}</title></circle>')
         a, b, _ = s["pontos"][-1]
-        finais.append([py(b), px(a), f'{s["nome"]} {br(b)}', s["cor"]])
+        if s.get("rotulo", True):   # uma série que acaba no meio fica só na legenda (o rótulo cairia em cima das outras)
+            finais.append([py(b), px(a), f'{s.get("rotulo_texto", s["nome"])} {br(b)}', s["cor"]])
     o.extend(nomes_das_referencias)
     # rótulos diretos no fim de cada linha, afastados para não se encostarem
     finais.sort()
@@ -254,6 +265,7 @@ def _nome_legivel(serie: dict) -> str:
 
 
 def desenhar(series: list[dict], refs: dict, continuacao: dict | None) -> list[Path]:
+    mais_longe = max(s["pontos"][-1]["tokens"] for s in series)
     linhas_de_referencia = [(refs["trigrama"], "trigrama contado"), (refs["teto_mini"], "teto do mini"),
                             (refs["criterio"], "critério")]
     feitos = []
@@ -271,22 +283,34 @@ def desenhar(series: list[dict], refs: dict, continuacao: dict | None) -> list[P
                         f'teste {br(p["teste"])} ({br(p["bits_por_byte"], 3)} bits por byte), medido')
                 pontos.append((x, p["teste"], dica))
             desenho.append({"nome": _nome_legivel(s), "cor": CORES.get(s["tamanho"], TINTA_2),
-                            "tracejado": s["semente"] != 1337, "pontos": pontos})
+                            "tracejado": s["semente"] != 1337, "pontos": pontos,
+                            "rotulo": s["pontos"][-1]["tokens"] >= 0.95 * mais_longe})
         grafico(desenho, linhas_de_referencia, titulo, rotulo_x, "nats por token (menor é melhor)", formato,
                 ESCALA / arquivo)
         feitos.append(ESCALA / arquivo)
     if continuacao:
-        pontos = [(p["tokens"] / 1e6, p["validacao_80_janelas"],
-                   f'passo {p["passo"]}: {p["tokens"] / 1e6:.0f} mi de tokens, validação {br(p["validacao_80_janelas"])}')
+        # a validação interna do treino (apagada: é a régua de bolso do treino, não a da fase) e o teste fixo,
+        # medido pelo protocolo nos marcos e no candidato; as duas em nats por token, no mesmo eixo
+        pontos = [(p["tokens"] / 1e6, p["validacao_do_treino"],
+                   f'passo {p["passo"]}: {p["tokens"] / 1e6:.0f} mi de tokens, validação interna {br(p["validacao_do_treino"])}')
                   for p in continuacao["pontos"]]
         corte = next(i for i, p in enumerate(continuacao["pontos"]) if p["passo"] > 7325)
-        desenho = [{"nome": "comparação (cosseno)", "cor": CORES.get(continuacao["tamanho"], TINTA_2),
-                    "pontos": pontos[:corte], "marcadores": False},
-                   {"nome": "continuação (taxa constante)", "cor": CORES.get(continuacao["tamanho"], TINTA_2),
-                    "tracejado": True, "pontos": pontos[corte - 1:], "marcadores": False}]
-        grafico(desenho, [(refs["teto_mini"], "teto do mini (no teste)"), (refs["criterio"], "critério (no teste)")],
+        finalista = next(s for s in series if s["nome"] == continuacao["tamanho"])
+        teste = [(p["tokens"] / 1e6, p["teste"], f'{p["tokens"] / 1e6:.0f} mi de tokens: teste {br(p["teste"])}, medido')
+                 for p in finalista["pontos"]]
+        if continuacao.get("candidato"):
+            c = continuacao["candidato"]
+            teste.append((c["tokens"] / 1e6, c["teste"], f'candidato (passo {c["passo"]}, {c["tokens"] / 1e6:.0f} mi de '
+                                                          f'tokens): teste {br(c["teste"])}, medido'))
+        desenho = [{"nome": "validação interna, cosseno", "cor": APAGADA, "pontos": pontos[:corte],
+                    "marcadores": False, "rotulo": False},
+                   {"nome": "validação interna, taxa constante", "cor": APAGADA, "tracejado": True,
+                    "pontos": pontos[corte - 1:], "marcadores": False, "rotulo": False},
+                   {"nome": "teste fixo (protocolo)", "cor": CORES.get(continuacao["tamanho"], TINTA_2), "pontos": teste,
+                    "rotulo_texto": "candidato" if continuacao.get("candidato") else "teste"}]
+        grafico(desenho, [(refs["teto_mini"], "teto do mini"), (refs["criterio"], "critério")],
                 f'O finalista ({continuacao["tamanho"]}) do começo ao fim', "milhões de tokens de treino",
-                "validação do treino (80 janelas)", lambda v: f"{v:.0f}", ESCALA / "continuacao.svg")
+                "nats por token (menor é melhor)", lambda v: f"{v:.0f}", ESCALA / "continuacao.svg")
         feitos.append(ESCALA / "continuacao.svg")
     return feitos
 

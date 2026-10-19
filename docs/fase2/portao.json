@@ -1,0 +1,60 @@
+{
+ "pesos": {
+  "arquivo": "modelo.npz",
+  "sha256": "79c86f632b9f326d9c926a78888fdf5fd7db733e0a6b80f7d485c898a5fdcad3",
+  "sha256_gravado": "79c86f632b9f326d9c926a78888fdf5fd7db733e0a6b80f7d485c898a5fdcad3",
+  "megabytes": 152.8,
+  "ok": true
+ },
+ "inferencia": {
+  "ok": true,
+  "janelas": [
+   {
+    "inicio": 0,
+    "ok": true,
+    "detalhe": "NumPy contra PyTorch: 1.5e-05 (mesmo token mais provável em 100% das posições) | um pedaço por vez contra a conta inteira: 1.1e-05"
+   },
+   {
+    "inicio": 666391,
+    "ok": true,
+    "detalhe": "NumPy contra PyTorch: 2.3e-05 (mesmo token mais provável em 100% das posições) | um pedaço por vez contra a conta inteira: 1.6e-05"
+   },
+   {
+    "inicio": 1332782,
+    "ok": true,
+    "detalhe": "NumPy contra PyTorch: 2.4e-05 (mesmo token mais provável em 100% das posições) | um pedaço por vez contra a conta inteira: 1.3e-05"
+   },
+   {
+    "inicio": 1999173,
+    "ok": true,
+    "detalhe": "NumPy contra PyTorch: 1.5e-05 (mesmo token mais provável em 100% das posições) | um pedaço por vez contra a conta inteira: 1.7e-05"
+   }
+  ]
+ },
+ "velocidade": {
+  "ok": true,
+  "tokens_por_segundo": 49.2,
+  "medidas": [
+   49.0,
+   49.2,
+   49.2,
+   49.3,
+   49.3
+  ],
+  "minimo_do_portao": 20,
+  "descricao": "GPT de 40,1 milhões de parâmetros (12 camadas, contexto 256)",
+  "parametros": 40057856
+ },
+ "servico": {
+  "ok": true,
+  "subiu_em_s": 12.6,
+  "cerebro_no_estado": {
+   "treinado": true,
+   "descricao": "GPT de 40,1 milhões de parâmetros (12 camadas, contexto 256)"
+  },
+  "pedido": "completa: O Brasil é",
+  "resposta": "O Brasil é considerada um dos maiores halteros do mundo, com mais de 300.000 espectadores (0,7 milhões de euros) em cada cinco anos, além da sua carreira como professor da Universidade do Estado do Rio Grande, na qual foi presidente até 2015.",
+  "respondeu_em_s": 1.9
+ },
+ "ok": true
+}

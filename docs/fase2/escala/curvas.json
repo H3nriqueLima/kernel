@@ -256,51 +256,78 @@
      "origem": "medido"
     }
    ]
+  },
+  {
+   "nome": "grande-s2026",
+   "tamanho": "grande",
+   "semente": 2026,
+   "parametros": 40057856,
+   "pontos": [
+    {
+     "passo": 1221,
+     "tokens": 10002432,
+     "horas": 2.3624722222222223,
+     "teste": 4.25518,
+     "bits_por_byte": 1.89682,
+     "validacao": 4.27811,
+     "origem": "medido"
+    }
+   ]
   }
  ],
  "comparacoes": {
   "tokens_iguais": {
-   "tokens": 60006400,
+   "tokens": 10002432,
    "tamanhos": [
     {
      "nome": "mini",
      "parametros": 3505152,
-     "teste": 3.50054,
-     "bits_por_byte": 1.5604,
+     "teste": 4.52022,
+     "bits_por_byte": 2.015,
      "origem": "medido",
-     "contra_trigrama": -0.2183,
-     "contra_teto_mini": 0.4646,
+     "contra_trigrama": 0.8014,
+     "contra_teto_mini": 1.4842,
      "contra_mini_mesmos_tokens": 0.0
     },
     {
      "nome": "medio",
      "parametros": 11256960,
-     "teste": 3.22411,
-     "bits_por_byte": 1.4372,
+     "teste": 4.32562,
+     "bits_por_byte": 1.9282,
      "origem": "medido",
-     "contra_trigrama": -0.4947,
-     "contra_teto_mini": 0.1881,
-     "contra_mini_mesmos_tokens": -0.2764
+     "contra_trigrama": 0.6068,
+     "contra_teto_mini": 1.2896,
+     "contra_mini_mesmos_tokens": -0.1946
     },
     {
      "nome": "pequeno",
      "parametros": 15867648,
-     "teste": 3.16822,
-     "bits_por_byte": 1.4123,
+     "teste": 4.30268,
+     "bits_por_byte": 1.918,
      "origem": "medido",
-     "contra_trigrama": -0.5506,
-     "contra_teto_mini": 0.1322,
-     "contra_mini_mesmos_tokens": -0.3323
+     "contra_trigrama": 0.5839,
+     "contra_teto_mini": 1.2667,
+     "contra_mini_mesmos_tokens": -0.2175
     },
     {
      "nome": "grande",
      "parametros": 40057856,
-     "teste": 3.05243,
-     "bits_por_byte": 1.3607,
+     "teste": 4.22123,
+     "bits_por_byte": 1.8817,
      "origem": "medido",
-     "contra_trigrama": -0.6664,
-     "contra_teto_mini": 0.0165,
-     "contra_mini_mesmos_tokens": -0.4481
+     "contra_trigrama": 0.5024,
+     "contra_teto_mini": 1.1853,
+     "contra_mini_mesmos_tokens": -0.299
+    },
+    {
+     "nome": "grande-s2026",
+     "parametros": 40057856,
+     "teste": 4.25518,
+     "bits_por_byte": 1.8968,
+     "origem": "medido",
+     "contra_trigrama": 0.5364,
+     "contra_teto_mini": 1.2192,
+     "contra_mini_mesmos_tokens": -0.265
     }
    ]
   },
@@ -360,7 +387,217 @@
     "origem": "estimado"
    }
   ],
-  "segunda_semente": []
+  "segunda_semente": [
+   {
+    "tamanho": "grande",
+    "tokens": 10002432,
+    "semente_1337": 4.22123,
+    "semente_2026": 4.25518,
+    "diferenca": 0.03395,
+    "origem": "medido",
+    "vantagem_sobre_o_mini": {
+     "1337": 0.299,
+     "2026": 0.265
+    }
+   }
+  ]
  },
- "continuacao": null
+ "continuacao": {
+  "tamanho": "grande",
+  "pontos": [
+   {
+    "passo": 500,
+    "tokens": 4096000,
+    "horas": 0.9666666666666667,
+    "validacao_do_treino": 5.0718
+   },
+   {
+    "passo": 1000,
+    "tokens": 8192000,
+    "horas": 1.9405555555555556,
+    "validacao_do_treino": 4.4791
+   },
+   {
+    "passo": 1500,
+    "tokens": 12288000,
+    "horas": 2.908888888888889,
+    "validacao_do_treino": 4.1214
+   },
+   {
+    "passo": 2000,
+    "tokens": 16384000,
+    "horas": 3.8769444444444443,
+    "validacao_do_treino": 3.8697
+   },
+   {
+    "passo": 2500,
+    "tokens": 20480000,
+    "horas": 4.843055555555556,
+    "validacao_do_treino": 3.7017
+   },
+   {
+    "passo": 3000,
+    "tokens": 24576000,
+    "horas": 5.8197222222222225,
+    "validacao_do_treino": 3.5682
+   },
+   {
+    "passo": 3500,
+    "tokens": 28672000,
+    "horas": 6.789444444444444,
+    "validacao_do_treino": 3.4766
+   },
+   {
+    "passo": 4000,
+    "tokens": 32768000,
+    "horas": 7.754722222222222,
+    "validacao_do_treino": 3.381
+   },
+   {
+    "passo": 4500,
+    "tokens": 36864000,
+    "horas": 8.727222222222222,
+    "validacao_do_treino": 3.3069
+   },
+   {
+    "passo": 4863,
+    "tokens": 39837696,
+    "horas": 9.443055555555556,
+    "validacao_do_treino": 3.2599
+   },
+   {
+    "passo": 5000,
+    "tokens": 40960000,
+    "horas": 9.709722222222222,
+    "validacao_do_treino": 3.2669
+   },
+   {
+    "passo": 5500,
+    "tokens": 45056000,
+    "horas": 10.674444444444445,
+    "validacao_do_treino": 3.2217
+   },
+   {
+    "passo": 6000,
+    "tokens": 49152000,
+    "horas": 11.644166666666667,
+    "validacao_do_treino": 3.175
+   },
+   {
+    "passo": 6500,
+    "tokens": 53248000,
+    "horas": 12.612222222222222,
+    "validacao_do_treino": 3.1488
+   },
+   {
+    "passo": 7000,
+    "tokens": 57344000,
+    "horas": 13.580277777777777,
+    "validacao_do_treino": 3.1221
+   },
+   {
+    "passo": 7325,
+    "tokens": 60006400,
+    "horas": 14.210833333333333,
+    "validacao_do_treino": 3.1176
+   },
+   {
+    "passo": 7500,
+    "tokens": 61440000,
+    "horas": 14.550277777777778,
+    "validacao_do_treino": 3.104
+   },
+   {
+    "passo": 8000,
+    "tokens": 65536000,
+    "horas": 15.514444444444445,
+    "validacao_do_treino": 3.0929
+   },
+   {
+    "passo": 8500,
+    "tokens": 69632000,
+    "horas": 16.482222222222223,
+    "validacao_do_treino": 3.0876
+   },
+   {
+    "passo": 9000,
+    "tokens": 73728000,
+    "horas": 17.450277777777778,
+    "validacao_do_treino": 3.0794
+   },
+   {
+    "passo": 9500,
+    "tokens": 77824000,
+    "horas": 18.41861111111111,
+    "validacao_do_treino": 3.0732
+   },
+   {
+    "passo": 10000,
+    "tokens": 81920000,
+    "horas": 19.388055555555557,
+    "validacao_do_treino": 3.0699
+   },
+   {
+    "passo": 10282,
+    "tokens": 84230144,
+    "horas": 19.935,
+    "validacao_do_treino": 3.0609
+   },
+   {
+    "passo": 10500,
+    "tokens": 86016000,
+    "horas": 20.362222222222222,
+    "validacao_do_treino": 3.0588
+   },
+   {
+    "passo": 11000,
+    "tokens": 90112000,
+    "horas": 21.330833333333334,
+    "validacao_do_treino": 3.0527
+   },
+   {
+    "passo": 11500,
+    "tokens": 94208000,
+    "horas": 22.296944444444446,
+    "validacao_do_treino": 3.0479
+   },
+   {
+    "passo": 12000,
+    "tokens": 98304000,
+    "horas": 23.26638888888889,
+    "validacao_do_treino": 3.0458
+   },
+   {
+    "passo": 12500,
+    "tokens": 102400000,
+    "horas": 24.233333333333334,
+    "validacao_do_treino": 3.0416
+   },
+   {
+    "passo": 13000,
+    "tokens": 106496000,
+    "horas": 25.2175,
+    "validacao_do_treino": 3.035
+   },
+   {
+    "passo": 13500,
+    "tokens": 110592000,
+    "horas": 26.230833333333333,
+    "validacao_do_treino": 3.0284
+   },
+   {
+    "passo": 13544,
+    "tokens": 110952448,
+    "horas": 26.31861111111111,
+    "validacao_do_treino": 3.0315
+   }
+  ],
+  "candidato": {
+   "passo": 13500,
+   "tokens": 110592000,
+   "teste": 2.96857,
+   "bits_por_byte": 1.32329,
+   "origem": "medido"
+  }
+ }
 }

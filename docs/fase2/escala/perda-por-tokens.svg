@@ -9,6 +9,8 @@
 <text x="189" y="50" font-size="12" fill="#52514e">pequeno</text>
 <line x1="250" y1="46" x2="272" y2="46" stroke="#eda100" stroke-width="2.5"/>
 <text x="278" y="50" font-size="12" fill="#52514e">grande</text>
+<line x1="332" y1="46" x2="354" y2="46" stroke="#eda100" stroke-width="2.5" stroke-dasharray="6 4"/>
+<text x="360" y="50" font-size="12" fill="#52514e">grande (semente 2026)</text>
 <line x1="70" y1="384.0" x2="590" y2="384.0" stroke="#e1e0d9" stroke-width="1"/>
 <text x="62" y="388.0" font-size="11" fill="#898781" text-anchor="end" style="font-variant-numeric: tabular-nums">2,80</text>
 <line x1="70" y1="349.6" x2="590" y2="349.6" stroke="#e1e0d9" stroke-width="1"/>
@@ -67,6 +69,8 @@
 <circle cx="416.7" cy="314.2" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 40 mi de tokens, 9,48 h, teste 3,205 (1,429 bits por byte), medido</title></circle>
 <circle cx="503.4" cy="332.0" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 50 mi de tokens, 11,85 h, teste 3,102 (1,383 bits por byte), medido</title></circle>
 <circle cx="590.1" cy="340.5" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande: 60 mi de tokens, 14,21 h, teste 3,052 (1,361 bits por byte), medido</title></circle>
+<path d="M156.7,133.4" fill="none" stroke="#eda100" stroke-width="2" stroke-linejoin="round" stroke-dasharray="6 4"/>
+<circle cx="156.7" cy="133.4" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"><title>grande (semente 2026): 10 mi de tokens, 2,36 h, teste 4,255 (1,897 bits por byte), medido</title></circle>
 <text x="76" y="220.8" font-size="11" fill="#52514e" stroke="#fcfcfb" stroke-width="3" paint-order="stroke">trigrama contado 3,719</text>
 <text x="76" y="338.4" font-size="11" fill="#52514e" stroke="#fcfcfb" stroke-width="3" paint-order="stroke">teto do mini 3,036</text>
 <text x="76" y="366.0" font-size="11" fill="#52514e" stroke="#fcfcfb" stroke-width="3" paint-order="stroke">critério 2,986</text>

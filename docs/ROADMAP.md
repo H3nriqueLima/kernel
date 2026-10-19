@@ -65,7 +65,11 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 ## Fase 2 — Estudo de escala e cérebro candidato
 
-**Situação:** em andamento (desde 16/10/2026), autorizada para ir além do mini, com até 48 h de placa. Os resultados ficam em [fase2/](fase2/).
+**Situação:** treinos e medidas concluídos em 18/10/2026, com as 48 h de placa. Falta a avaliação às cegas, que depende das notas do Henrique. Veja o [relatório](fase2/relatorio.md).
+
+- **Candidato:** o tamanho grande (40,1 mi de parâmetros), com **2,969 no teste fixo** (1,323 bits por byte), dentro do critério de 2,986.
+- **Portão técnico:** cumprido. Carrega e responde no serviço, o NumPy confere com o PyTorch, gera 49 tokens/s na CPU e os testes não regrediram.
+- **Segunda semente:** foi cancelada pelo Henrique para dar horas à continuação, então a repetição do ganho ficou sem verificar.
 
 **Objetivo:** descobrir com dados quanto de capacidade a mais compra de coerência e o que a RX 570 aguenta, antes de qualquer gasto.
 
