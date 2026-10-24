@@ -1,0 +1,50 @@
+== fração de textos com nota 2 (o corte exigente)
+henrique candidato portugues 47.9% | assunto 43.8% | coerencia_interna 14.6% | factualidade 8.3%
+henrique mini      portugues 25.0% | assunto 39.6% | coerencia_interna 0.0% | factualidade 8.3%
+claude   candidato portugues 27.1% | assunto 47.9% | coerencia_interna 20.8% | factualidade 12.5%
+claude   mini      portugues 8.3% | assunto 50.0% | coerencia_interna 2.1% | factualidade 8.3%
+== concordância no corte 'nota 2' contra 'nota 0 ou 1', sem os exemplos
+portugues          kappa 0.447 | acordo 79.7%
+assunto            kappa 0.577 | acordo 79.7%
+coerencia_interna  kappa 0.653 | acordo 97.1%
+factualidade       kappa 0.736 | acordo 97.1%
+== coerência interna por jeito de gerar (nota 1 ou 2 | nota 2)
+henrique candidato servico   70.8% |  12.5%
+henrique candidato sorteio   70.8% |  16.7%
+henrique mini      servico   58.3% |   0.0%
+henrique mini      sorteio   45.8% |   0.0%
+claude   candidato servico   79.2% |  16.7%
+claude   candidato sorteio   79.2% |  25.0%
+claude   mini      servico   66.7% |   0.0%
+claude   mini      sorteio   41.7% |   4.2%
+== pareado: candidato contra mini no mesmo começo, modo e semente (teste do sinal, bilateral)
+henrique portugues          candidato melhor em 16, pior em  6, empate 26 | p = 0.052
+henrique assunto            candidato melhor em 14, pior em 13, empate 21 | p = 1.000
+henrique coerencia_interna  candidato melhor em 18, pior em  4, empate 26 | p = 0.004
+henrique factualidade       candidato melhor em  7, pior em  5, empate 36 | p = 0.774
+claude   portugues          candidato melhor em 15, pior em  6, empate 27 | p = 0.078
+claude   assunto            candidato melhor em 12, pior em 12, empate 24 | p = 1.000
+claude   coerencia_interna  candidato melhor em 21, pior em  3, empate 24 | p = 0.000
+claude   factualidade       candidato melhor em  9, pior em  5, empate 34 | p = 0.424
+== discordâncias (Henrique, Claude) por critério, sem os exemplos
+portugues          {(0, 1): 1, (1, 0): 2, (1, 2): 2, (2, 1): 12}
+assunto            {(0, 1): 12, (0, 2): 2, (1, 2): 8, (2, 1): 4}
+coerencia_interna  {(0, 1): 9, (1, 0): 3, (1, 2): 2}
+factualidade       {(0, 1): 1, (0, 2): 2, (1, 0): 1}
+== assunto: os textos com nota 0 do Henrique e nota 1 ou 2 do Claude
+L009 T046 O Sol é a estrela | H [1, 0, 0, 0] C [1, 1, 0, 0]
+L018 T036 A língua portuguesa | H [2, 0, 2, 0] C [2, 1, 2, 0]
+L023 T016 O Sol é a estrela | H [2, 0, 1, 0] C [1, 2, 2, 0]
+L026 T091 A língua portuguesa | H [1, 0, 1, 0] C [1, 1, 1, 0]
+L027 T076 A Segunda Guerra Mundial | H [1, 0, 0, 0] C [1, 1, 0, 0]
+L030 T045 O Sol é a estrela | H [1, 0, 0, 0] C [1, 1, 0, 0]
+L032 T020 A fotossíntese é o processo | H [1, 0, 0, 0] C [1, 1, 0, 0]
+L036 T043 O Sol é a estrela | H [2, 0, 0, 0] C [1, 1, 1, 0]
+L048 T026 A fotossíntese é o processo | H [1, 0, 0, 0] C [1, 1, 0, 0]
+L055 T029 O Sol é a estrela | H [2, 0, 0, 0] C [1, 1, 1, 0]
+L072 T001 A fotossíntese é o processo | H [2, 0, 0, 0] C [1, 1, 0, 0]
+L074 T015 A fotossíntese é o processo | H [1, 0, 1, 0] C [1, 1, 1, 0]
+L079 T051 O Brasil é | H [2, 0, 1, 0] C [2, 1, 1, 0]
+L092 T024 A fotossíntese é o processo | H [1, 0, 1, 0] C [1, 2, 1, 0]
+L093 T021 O Brasil é | H [2, 0, 1, 0] C [1, 1, 1, 0]
+L095 T089 O Sol é a estrela | H [1, 0, 0, 0] C [1, 2, 0, 0]

@@ -1,0 +1,79 @@
+{
+ "textos": 96,
+ "exemplos_da_rubrica": 27,
+ "henrique": {
+  "candidato": {
+   "textos": 48,
+   "portugues": 95.8,
+   "assunto": 79.2,
+   "coerencia_interna": 70.8,
+   "factualidade": 25.0,
+   "portugues_media": 1.438,
+   "assunto_media": 1.229,
+   "coerencia_interna_media": 0.854,
+   "factualidade_media": 0.333
+  },
+  "mini": {
+   "textos": 48,
+   "portugues": 97.9,
+   "assunto": 81.2,
+   "coerencia_interna": 52.1,
+   "factualidade": 22.9,
+   "portugues_media": 1.229,
+   "assunto_media": 1.208,
+   "coerencia_interna_media": 0.521,
+   "factualidade_media": 0.312
+  }
+ },
+ "claude": {
+  "candidato": {
+   "textos": 48,
+   "portugues": 95.8,
+   "assunto": 97.9,
+   "coerencia_interna": 79.2,
+   "factualidade": 31.2,
+   "portugues_media": 1.229,
+   "assunto_media": 1.458,
+   "coerencia_interna_media": 1.0,
+   "factualidade_media": 0.438
+  },
+  "mini": {
+   "textos": 48,
+   "portugues": 95.8,
+   "assunto": 95.8,
+   "coerencia_interna": 54.2,
+   "factualidade": 22.9,
+   "portugues_media": 1.042,
+   "assunto_media": 1.458,
+   "coerencia_interna_media": 0.562,
+   "factualidade_media": 0.312
+  }
+ },
+ "concordancia": {
+  "portugues": {
+   "kappa_1ou2_sem_exemplos": 0.378,
+   "kappa_1ou2_todos": 0.556,
+   "kappa_tres_notas_sem_exemplos": 0.412,
+   "acordo_1ou2_sem_exemplos": 95.7
+  },
+  "assunto": {
+   "kappa_1ou2_sem_exemplos": 0.101,
+   "kappa_1ou2_todos": 0.231,
+   "kappa_tres_notas_sem_exemplos": 0.378,
+   "acordo_1ou2_sem_exemplos": 79.7
+  },
+  "coerencia_interna": {
+   "kappa_1ou2_sem_exemplos": 0.638,
+   "kappa_1ou2_todos": 0.662,
+   "kappa_tres_notas_sem_exemplos": 0.616,
+   "acordo_1ou2_sem_exemplos": 82.6
+  },
+  "factualidade": {
+   "kappa_1ou2_sem_exemplos": 0.799,
+   "kappa_1ou2_todos": 0.863,
+   "kappa_tres_notas_sem_exemplos": 0.808,
+   "acordo_1ou2_sem_exemplos": 94.2
+  }
+ },
+ "criterio_kappa_06": true
+}
