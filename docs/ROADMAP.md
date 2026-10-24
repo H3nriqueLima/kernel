@@ -80,6 +80,13 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 **A resposta da fase:** de 3,5 para 40 milhões de parâmetros, a perda cai bem, mas a coerência que o Henrique vê, não.
 
+**Nota posterior (24/10/2026, Etapa 1 da Fase 2.5):** o portão da Fase 2 continua NÃO cumprido, pelos critérios escritos naquela época. Mas os mesmos 96 textos foram pontuados de novo com a rubrica calibrada, que separa coerência interna de factualidade, e o resultado muda a leitura:
+- **O grande liga melhor as frases que o mini.** No mesmo começo, modo e semente, ele ganha em coerência interna em 18 pares e perde em 4 para o Henrique (p = 0,004), e ganha em 21 e perde em 3 para o Claude (p < 0,001).
+- **A factualidade ficou baixa e igual** nos dois modelos (23% a 31% dos textos com nota 1 ou 2).
+- **A conclusão "a coerência não melhorou"** vinha da rubrica antiga, que misturava os dois critérios: um texto bem ligado e com fato absurdo levava 0.
+- **Ressalvas:** os 27 exemplos da rubrica nova saíram desses mesmos 96 textos, e os dois avaliadores já conheciam os resultados da Fase 2 quando pontuaram de novo.
+- **Os detalhes** estão em [fase25/linha-de-base](fase25/linha-de-base/).
+
 **Objetivo:** descobrir com dados quanto de capacidade a mais compra de coerência e o que a RX 570 aguenta, antes de qualquer gasto.
 
 **Régua:** o teto do mini, 3,036 nats por token e 1,353 bits por byte no teste fixo. O treino de todos os tamanhos usa o padrão da Fase 1.5.
@@ -113,7 +120,11 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 ## Fase 2.5 — Rubrica calibrada e experimento de corpus simples
 
-**Situação:** a fazer.
+**Situação:** em andamento. As Etapas 0 e 1 foram concluídas em 24/10/2026.
+- **Rubrica calibrada:** [fase25/rubrica.md](fase25/rubrica.md).
+- **Concordância:** o kappa de coerência interna na linha de base foi 0,638.
+- **Linha de base do mini na Wikipédia,** coerência interna com nota 2: 0% para o Henrique e 2,1% para o Claude.
+- **Próximo passo:** a Etapa 2, a escolha do corpus simples.
 
 **Objetivo:** descobrir se a falta de coerência vem do corpus (a Wikipédia em pedaços de 256 tokens, difícil demais para modelos pequenos) e não só do tamanho, e calibrar a avaliação à mão para que ela meça a mesma coisa para os dois avaliadores.
 
@@ -121,9 +132,13 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 **Critérios fixados antes de rodar** (propostas de 24/10/2026, a rever só antes da Etapa 3, nunca depois de ver resultados):
 
-- Todas as contas são fração de textos com nota 1 ou 2, 48 textos por modelo, notas de dois avaliadores gravadas antes de abrir a chave.
+- Todas as contas são fração de textos com nota 1 ou 2, 48 textos por modelo, notas de dois avaliadores gravadas antes de abrir a chave. **Exceção, só para a coerência interna:** conta a nota 2 (ver abaixo).
 - Concordância: kappa de Cohen de pelo menos 0,6 em coerência interna, medido na linha de base nova. Sem isso, não se passa à Etapa 2.
-- Coerência interna: pelo menos 25% dos textos com nota 1 ou 2 nos dois avaliadores, e pelo menos o dobro da linha de base do mini na Wikipédia.
+- **Coerência interna (revisto em 24/10/2026, antes da Etapa 3):** pelo menos 25% dos textos com **nota 2** nos dois avaliadores.
+  - **O original era:** "pelo menos 25% dos textos com nota 1 ou 2 nos dois avaliadores, e pelo menos o dobro da linha de base do mini na Wikipédia".
+  - **Motivo:** na linha de base, o mini já tem ~52% com nota 1 ou 2. O dobro seria impossível, e os 25% ele já cumpria.
+  - **Na nota 2, a linha de base:** o mini tem 0% e 2,1%, e o grande, 14,6% e 20,8% (Henrique e Claude). A concordância no corte de nota 2 é kappa 0,653.
+  - **Este limite não será alterado depois da Etapa 3.**
 - Português: no máximo 10 pontos percentuais abaixo da linha de base do mini.
 - Perda no corpus simples: só relatada, sem critério de aprovação, porque a distribuição muda. Bits por byte para comparar entre tokenizadores.
 - Custo na Wikipédia: relatado, sem critério.
