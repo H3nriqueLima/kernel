@@ -41,7 +41,7 @@ def textos_da_fase2() -> dict[str, tuple[str, str]]:
 
 def exemplos_da_rubrica() -> set[str]:
     """Os textos da Fase 2 citados como exemplo na rubrica: a nota deles foi combinada antes."""
-    return set(re.findall(r"T\d{3}", (AQUI / "rubrica.md").read_text(encoding="utf-8")))   # em negrito ou não
+    return set(re.findall(r"\bT\d{3}\b", (AQUI / "rubrica.md").read_text(encoding="utf-8")))   # em negrito ou não
 
 
 def montar() -> None:
