@@ -1,578 +1,578 @@
 {
-"L001": [
-null,
-null,
-null,
-null
-],
-"L002": [
-null,
-null,
-null,
-null
-],
-"L003": [
-null,
-null,
-null,
-null
-],
-"L004": [
-null,
-null,
-null,
-null
-],
-"L005": [
-null,
-null,
-null,
-null
-],
-"L006": [
-null,
-null,
-null,
-null
-],
-"L007": [
-null,
-null,
-null,
-null
-],
-"L008": [
-null,
-null,
-null,
-null
-],
-"L009": [
-null,
-null,
-null,
-null
-],
-"L010": [
-null,
-null,
-null,
-null
-],
-"L011": [
-null,
-null,
-null,
-null
-],
-"L012": [
-null,
-null,
-null,
-null
-],
-"L013": [
-null,
-null,
-null,
-null
-],
-"L014": [
-null,
-null,
-null,
-null
-],
-"L015": [
-null,
-null,
-null,
-null
-],
-"L016": [
-null,
-null,
-null,
-null
-],
-"L017": [
-null,
-null,
-null,
-null
-],
-"L018": [
-null,
-null,
-null,
-null
-],
-"L019": [
-null,
-null,
-null,
-null
-],
-"L020": [
-null,
-null,
-null,
-null
-],
-"L021": [
-null,
-null,
-null,
-null
-],
-"L022": [
-null,
-null,
-null,
-null
-],
-"L023": [
-null,
-null,
-null,
-null
-],
-"L024": [
-null,
-null,
-null,
-null
-],
-"L025": [
-null,
-null,
-null,
-null
-],
-"L026": [
-null,
-null,
-null,
-null
-],
-"L027": [
-null,
-null,
-null,
-null
-],
-"L028": [
-null,
-null,
-null,
-null
-],
-"L029": [
-null,
-null,
-null,
-null
-],
-"L030": [
-null,
-null,
-null,
-null
-],
-"L031": [
-null,
-null,
-null,
-null
-],
-"L032": [
-null,
-null,
-null,
-null
-],
-"L033": [
-null,
-null,
-null,
-null
-],
-"L034": [
-null,
-null,
-null,
-null
-],
-"L035": [
-null,
-null,
-null,
-null
-],
-"L036": [
-null,
-null,
-null,
-null
-],
-"L037": [
-null,
-null,
-null,
-null
-],
-"L038": [
-null,
-null,
-null,
-null
-],
-"L039": [
-null,
-null,
-null,
-null
-],
-"L040": [
-null,
-null,
-null,
-null
-],
-"L041": [
-null,
-null,
-null,
-null
-],
-"L042": [
-null,
-null,
-null,
-null
-],
-"L043": [
-null,
-null,
-null,
-null
-],
-"L044": [
-null,
-null,
-null,
-null
-],
-"L045": [
-null,
-null,
-null,
-null
-],
-"L046": [
-null,
-null,
-null,
-null
-],
-"L047": [
-null,
-null,
-null,
-null
-],
-"L048": [
-null,
-null,
-null,
-null
-],
-"L049": [
-null,
-null,
-null,
-null
-],
-"L050": [
-null,
-null,
-null,
-null
-],
-"L051": [
-null,
-null,
-null,
-null
-],
-"L052": [
-null,
-null,
-null,
-null
-],
-"L053": [
-null,
-null,
-null,
-null
-],
-"L054": [
-null,
-null,
-null,
-null
-],
-"L055": [
-null,
-null,
-null,
-null
-],
-"L056": [
-null,
-null,
-null,
-null
-],
-"L057": [
-null,
-null,
-null,
-null
-],
-"L058": [
-null,
-null,
-null,
-null
-],
-"L059": [
-null,
-null,
-null,
-null
-],
-"L060": [
-null,
-null,
-null,
-null
-],
-"L061": [
-null,
-null,
-null,
-null
-],
-"L062": [
-null,
-null,
-null,
-null
-],
-"L063": [
-null,
-null,
-null,
-null
-],
-"L064": [
-null,
-null,
-null,
-null
-],
-"L065": [
-null,
-null,
-null,
-null
-],
-"L066": [
-null,
-null,
-null,
-null
-],
-"L067": [
-null,
-null,
-null,
-null
-],
-"L068": [
-null,
-null,
-null,
-null
-],
-"L069": [
-null,
-null,
-null,
-null
-],
-"L070": [
-null,
-null,
-null,
-null
-],
-"L071": [
-null,
-null,
-null,
-null
-],
-"L072": [
-null,
-null,
-null,
-null
-],
-"L073": [
-null,
-null,
-null,
-null
-],
-"L074": [
-null,
-null,
-null,
-null
-],
-"L075": [
-null,
-null,
-null,
-null
-],
-"L076": [
-null,
-null,
-null,
-null
-],
-"L077": [
-null,
-null,
-null,
-null
-],
-"L078": [
-null,
-null,
-null,
-null
-],
-"L079": [
-null,
-null,
-null,
-null
-],
-"L080": [
-null,
-null,
-null,
-null
-],
-"L081": [
-null,
-null,
-null,
-null
-],
-"L082": [
-null,
-null,
-null,
-null
-],
-"L083": [
-null,
-null,
-null,
-null
-],
-"L084": [
-null,
-null,
-null,
-null
-],
-"L085": [
-null,
-null,
-null,
-null
-],
-"L086": [
-null,
-null,
-null,
-null
-],
-"L087": [
-null,
-null,
-null,
-null
-],
-"L088": [
-null,
-null,
-null,
-null
-],
-"L089": [
-null,
-null,
-null,
-null
-],
-"L090": [
-null,
-null,
-null,
-null
-],
-"L091": [
-null,
-null,
-null,
-null
-],
-"L092": [
-null,
-null,
-null,
-null
-],
-"L093": [
-null,
-null,
-null,
-null
-],
-"L094": [
-null,
-null,
-null,
-null
-],
-"L095": [
-null,
-null,
-null,
-null
-],
-"L096": [
-null,
-null,
-null,
-null
-]
+ "L001": [
+  1,
+  2,
+  2,
+  1
+ ],
+ "L002": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L003": [
+  1,
+  2,
+  0,
+  0
+ ],
+ "L004": [
+  2,
+  2,
+  1,
+  1
+ ],
+ "L005": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L006": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L007": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L008": [
+  1,
+  0,
+  1,
+  0
+ ],
+ "L009": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L010": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L011": [
+  2,
+  2,
+  1,
+  0
+ ],
+ "L012": [
+  1,
+  1,
+  1,
+  1
+ ],
+ "L013": [
+  2,
+  2,
+  2,
+  1
+ ],
+ "L014": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L015": [
+  2,
+  2,
+  1,
+  0
+ ],
+ "L016": [
+  1,
+  2,
+  0,
+  0
+ ],
+ "L017": [
+  1,
+  2,
+  0,
+  1
+ ],
+ "L018": [
+  2,
+  0,
+  2,
+  0
+ ],
+ "L019": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L020": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L021": [
+  0,
+  1,
+  0,
+  0
+ ],
+ "L022": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L023": [
+  2,
+  0,
+  1,
+  0
+ ],
+ "L024": [
+  1,
+  2,
+  0,
+  0
+ ],
+ "L025": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L026": [
+  1,
+  0,
+  1,
+  0
+ ],
+ "L027": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L028": [
+  1,
+  1,
+  1,
+  1
+ ],
+ "L029": [
+  1,
+  2,
+  1,
+  1
+ ],
+ "L030": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L031": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L032": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L033": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L034": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L035": [
+  2,
+  2,
+  2,
+  1
+ ],
+ "L036": [
+  2,
+  0,
+  0,
+  0
+ ],
+ "L037": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L038": [
+  1,
+  2,
+  0,
+  0
+ ],
+ "L039": [
+  0,
+  1,
+  0,
+  0
+ ],
+ "L040": [
+  2,
+  2,
+  0,
+  0
+ ],
+ "L041": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L042": [
+  1,
+  0,
+  1,
+  0
+ ],
+ "L043": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L044": [
+  1,
+  2,
+  0,
+  2
+ ],
+ "L045": [
+  2,
+  1,
+  1,
+  1
+ ],
+ "L046": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L047": [
+  2,
+  2,
+  1,
+  1
+ ],
+ "L048": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L049": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L050": [
+  2,
+  2,
+  1,
+  0
+ ],
+ "L051": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L052": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L053": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L054": [
+  2,
+  2,
+  2,
+  1
+ ],
+ "L055": [
+  2,
+  0,
+  0,
+  0
+ ],
+ "L056": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L057": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L058": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L059": [
+  1,
+  2,
+  0,
+  2
+ ],
+ "L060": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L061": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L062": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L063": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L064": [
+  1,
+  2,
+  0,
+  0
+ ],
+ "L065": [
+  2,
+  1,
+  1,
+  2
+ ],
+ "L066": [
+  2,
+  1,
+  0,
+  0
+ ],
+ "L067": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L068": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L069": [
+  2,
+  2,
+  2,
+  0
+ ],
+ "L070": [
+  2,
+  1,
+  1,
+  1
+ ],
+ "L071": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L072": [
+  2,
+  0,
+  0,
+  0
+ ],
+ "L073": [
+  2,
+  2,
+  1,
+  1
+ ],
+ "L074": [
+  1,
+  0,
+  1,
+  0
+ ],
+ "L075": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L076": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L077": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L078": [
+  2,
+  2,
+  1,
+  0
+ ],
+ "L079": [
+  2,
+  0,
+  1,
+  0
+ ],
+ "L080": [
+  1,
+  1,
+  1,
+  0
+ ],
+ "L081": [
+  1,
+  2,
+  1,
+  2
+ ],
+ "L082": [
+  1,
+  2,
+  0,
+  1
+ ],
+ "L083": [
+  1,
+  1,
+  0,
+  0
+ ],
+ "L084": [
+  1,
+  2,
+  1,
+  2
+ ],
+ "L085": [
+  1,
+  2,
+  0,
+  2
+ ],
+ "L086": [
+  1,
+  2,
+  1,
+  0
+ ],
+ "L087": [
+  2,
+  2,
+  1,
+  2
+ ],
+ "L088": [
+  1,
+  2,
+  0,
+  2
+ ],
+ "L089": [
+  2,
+  2,
+  2,
+  1
+ ],
+ "L090": [
+  2,
+  1,
+  1,
+  0
+ ],
+ "L091": [
+  0,
+  1,
+  0,
+  0
+ ],
+ "L092": [
+  1,
+  0,
+  1,
+  0
+ ],
+ "L093": [
+  2,
+  0,
+  1,
+  0
+ ],
+ "L094": [
+  1,
+  2,
+  0,
+  0
+ ],
+ "L095": [
+  1,
+  0,
+  0,
+  0
+ ],
+ "L096": [
+  2,
+  1,
+  1,
+  0
+ ]
 }
