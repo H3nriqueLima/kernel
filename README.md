@@ -13,6 +13,13 @@ O que mudou, e o que ficou documentado como risco aceito, está em [docs/fase0/R
 
 Depois veio a Fase 1, o diagnóstico do cérebro ([relatório](docs/fase1/diagnostico.md)). O pipeline de treino e de inferência foi conferido peça por peça, e passou. O texto sem sentido vem do tamanho do modelo: 3,5 milhões de parâmetros. A medida de progresso agora é reprodutível: `python -m kernel cerebro protocolo`, num conjunto de teste fixo de texto que ele nunca leu.
 
+Na Fase 1.5, o mini chegou ao seu teto: 3,036 nats por token no teste fixo ([relatório](docs/fase15/relatorio.md)). É ele que o serviço usa.
+
+A Fase 2 mediu o que tamanho compra nesta placa ([relatório](docs/fase2/relatorio.md)).
+- **Os tamanhos:** quatro, de 3,5 a 40 milhões de parâmetros, treinados do mesmo jeito.
+- **O resultado:** o maior (`grande`) chegou a 2,969 no teste, a melhor perda do projeto. Na leitura às cegas, porém, o texto continuou sem sentido.
+- **O serviço:** por isso o cérebro do serviço continua o mini; o grande fica guardado.
+
 A 0.5 foi uma rodada de ajustes antes do cérebro maior. A conversa ficou mais esperta (perguntas que ele não conhecia, "fale mais", perguntas sobre ele mesmo), ele explora com critério (sem perder tempo com o Windows), não fala sozinho quando você não está e conta o que aprendeu. Da 0.4 vem a pesquisa na internet; da 0.3, a voz de difones; da 0.2, a autonomia, o celular e a orbe. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Ligar e desligar
@@ -278,18 +285,29 @@ python -m kernel cerebro avaliar                   perda, perplexidade e amostra
 python -m kernel cerebro gerar "O Brasil é"        pede um texto ao cérebro
 python -m kernel cerebro verificar                 confere cada peça do pipeline e o teste de memorizar
 python -m kernel cerebro protocolo                 a medida reprodutível: perda nos conjuntos fixos, n-gramas, textos, desempenho
+python -m kernel cerebro instalar --de PASTA       troca o cérebro do serviço por outro já treinado (serviço desligado; faz cópia antes)
 ```
 
-**Como medir progresso de verdade.** Use o `protocolo`, não a perda que aparece no treino. Ele mede o cérebro em conjuntos fixos (`dados/cerebro/avaliacao/`) de texto que ele nunca leu, sempre do mesmo jeito: o mesmo modelo dá os mesmos números. A régua de hoje é **3,094 nats por token no teste** (1,379 bits por byte), o modelo do passo 46.000. Uma perda menor não garante texto com sentido: o protocolo guarda os textos gerados para conferir. O diagnóstico completo está em [docs/fase1/diagnostico.md](docs/fase1/diagnostico.md).
+**Como medir progresso de verdade.** Use o `protocolo`, não a perda que aparece no treino. Ele mede o cérebro em conjuntos fixos (`dados/cerebro/avaliacao/`) de texto que ele nunca leu, sempre do mesmo jeito: o mesmo modelo dá os mesmos números. A régua de hoje é **3,036 nats por token no teste** (1,353 bits por byte), o teto do mini (Fase 1.5). Uma perda menor não garante texto com sentido: o protocolo guarda os textos gerados para conferir. O diagnóstico completo está em [docs/fase1/diagnostico.md](docs/fase1/diagnostico.md).
 
 **Como as sessões se emendam (desde a Fase 1.5).**
 - **Sem reaquecer.** A primeira sessão sobe a taxa de aprendizado e desce em cosseno. As seguintes continuam com a taxa baixa e constante em que a primeira terminou. Reaquecer a cada sessão custava ~0,02 no teste.
 - **Sem repetir.** O treino lê o corpus inteiro sem repetir, em ordem embaralhada por documento, e guarda no checkpoint até onde leu. Isso usa ~1,5 GB a mais de RAM durante o treino.
 - **Parar sozinho.** `--parar-se-estagnar 6` encerra a sessão quando a validação para de melhorar.
+- **Sessão de passos interrompida (Fase 2).** `--sessao-passos N --sessao-desde P` continua uma sessão de N passos que começou no passo P e foi parada no meio, com a mesma taxa e a mesma meta que ela teria sem a parada.
 
 O ganho de cada ajuste está em [docs/fase15/relatorio.md](docs/fase15/relatorio.md).
 
-Velocidade medida neste PC (i5-2400, 12 GB, RX 570 4 GB): o `mini` (3,5 mi de parâmetros) treina a ~21 milhões de tokens por hora na placa, cerca de 7 a 8 horas para a meta padrão; o `pequeno` (17 mi) a ~5,5 milhões por hora, cerca de 8 madrugadas.
+Velocidade medida neste PC (i5-2400, 12 GB, RX 570 4 GB) na Fase 2, com o lote que cabe em cada um:
+
+| Tamanho | Parâmetros | Lote × acúmulo | Tokens por hora na placa | Geração na CPU |
+|---|---|---|---|---|
+| `mini` | 3,5 mi | 16 × 2 | ~25 milhões | ~250 tokens/s |
+| `medio` | 11,3 mi | 8 × 4 | ~12 milhões | ~120 tokens/s |
+| `pequeno` | 15,9 mi | 4 × 8 | ~10,6 milhões | ~100 tokens/s |
+| `grande` | 40,1 mi | 2 × 16 | ~4,2 milhões | ~49 tokens/s |
+
+O `grande` é o maior que a placa treina, e no limite da memória de vídeo.
 
 A palavra de ativação (`python -m kernel ouvidos gravar ...`) precisa de um microfone no PC.
 

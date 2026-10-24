@@ -1,0 +1,578 @@
+{
+ "T001": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T002": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T003": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A língua portuguesa"
+ },
+ "T004": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T005": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T006": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "O Sol é a estrela"
+ },
+ "T007": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T008": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T009": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "O futebol é um esporte"
+ },
+ "T010": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A água é uma substância"
+ },
+ "T011": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T012": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T013": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "O Brasil é"
+ },
+ "T014": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A língua portuguesa"
+ },
+ "T015": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T016": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "O Sol é a estrela"
+ },
+ "T017": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "O futebol é um esporte"
+ },
+ "T018": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "O Sol é a estrela"
+ },
+ "T019": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T020": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T021": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "O Brasil é"
+ },
+ "T022": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T023": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T024": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T025": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T026": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T027": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T028": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T029": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "O Sol é a estrela"
+ },
+ "T030": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A água é uma substância"
+ },
+ "T031": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T032": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T033": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T034": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "O futebol é um esporte"
+ },
+ "T035": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T036": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A língua portuguesa"
+ },
+ "T037": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T038": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T039": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "O Brasil é"
+ },
+ "T040": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T041": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T042": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T043": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "O Sol é a estrela"
+ },
+ "T044": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T045": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "O Sol é a estrela"
+ },
+ "T046": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "O Sol é a estrela"
+ },
+ "T047": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A língua portuguesa"
+ },
+ "T048": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "O futebol é um esporte"
+ },
+ "T049": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "O futebol é um esporte"
+ },
+ "T050": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T051": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "O Brasil é"
+ },
+ "T052": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T053": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T054": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T055": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "O futebol é um esporte"
+ },
+ "T056": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T057": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T058": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A fotossíntese é o processo"
+ },
+ "T059": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A água é uma substância"
+ },
+ "T060": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T061": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A língua portuguesa"
+ },
+ "T062": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A água é uma substância"
+ },
+ "T063": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T064": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T065": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T066": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "O Brasil é"
+ },
+ "T067": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "O futebol é um esporte"
+ },
+ "T068": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T069": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T070": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A cidade de São Paulo"
+ },
+ "T071": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T072": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T073": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T074": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A língua portuguesa"
+ },
+ "T075": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T076": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T077": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T078": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T079": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A água é uma substância"
+ },
+ "T080": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Machado de Assis escreveu"
+ },
+ "T081": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "O futebol é um esporte"
+ },
+ "T082": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "O Brasil é"
+ },
+ "T083": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "O Brasil é"
+ },
+ "T084": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "Albert Einstein foi um"
+ },
+ "T085": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "O Brasil é"
+ },
+ "T086": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T087": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Um computador é uma máquina"
+ },
+ "T088": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A Segunda Guerra Mundial"
+ },
+ "T089": {
+  "modelo": "candidato",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "O Sol é a estrela"
+ },
+ "T090": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A língua portuguesa"
+ },
+ "T091": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A língua portuguesa"
+ },
+ "T092": {
+  "modelo": "mini",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A água é uma substância"
+ },
+ "T093": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 2,
+  "comeco": "A água é uma substância"
+ },
+ "T094": {
+  "modelo": "mini",
+  "modo": "servico",
+  "semente": 1,
+  "comeco": "A água é uma substância"
+ },
+ "T095": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 1,
+  "comeco": "Em 1500, Pedro Álvares Cabral"
+ },
+ "T096": {
+  "modelo": "candidato",
+  "modo": "sorteio",
+  "semente": 2,
+  "comeco": "A Segunda Guerra Mundial"
+ }
+}

@@ -65,11 +65,15 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 ## Fase 2 — Estudo de escala e cérebro candidato
 
-**Situação:** treinos e medidas concluídos em 18/10/2026, com as 48 h de placa. Falta a avaliação às cegas, que depende das notas do Henrique. Veja o [relatório](fase2/relatorio.md).
+**Situação:** concluída em 24/10/2026, **sem passar no portão**. O candidato não cumpriu o critério de coerência. Veja o [relatório](fase2/relatorio.md).
 
-- **Candidato:** o tamanho grande (40,1 mi de parâmetros), com **2,969 no teste fixo** (1,323 bits por byte), dentro do critério de 2,986.
-- **Portão técnico:** cumprido. Carrega e responde no serviço, o NumPy confere com o PyTorch, gera 49 tokens/s na CPU e os testes não regrediram.
-- **Segunda semente:** foi cancelada pelo Henrique para dar horas à continuação, então a repetição do ganho ficou sem verificar.
+- **Candidato:** o tamanho grande (40,1 mi de parâmetros), com **2,969 no teste fixo** (1,323 bits por byte), dentro do critério de perda.
+- **Portão técnico:** cumprido (serviço, NumPy contra PyTorch, 49 tokens/s na CPU, testes).
+- **Avaliação às cegas:** coerência em 2% dos textos para o Henrique e 29% para o Claude; o pedido era 25% nos dois. O assunto ficou igual ao do mini, e o português subiu um pouco.
+- **Segunda semente:** cancelada pelo Henrique, então a repetição do ganho de perda ficou sem verificar.
+- **Serviço:** continua com o teto do mini.
+
+**A resposta da fase:** de 3,5 para 40 milhões de parâmetros, a perda cai bem, mas a coerência que um leitor vê, não. O próximo passo recomendado não é mais tamanho; é o experimento de corpus, a avaliação de conversa e uma rubrica calibrada entre os dois avaliadores.
 
 **Objetivo:** descobrir com dados quanto de capacidade a mais compra de coerência e o que a RX 570 aguenta, antes de qualquer gasto.
 

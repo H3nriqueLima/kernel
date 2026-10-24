@@ -5,7 +5,9 @@
            notas-henrique.json e notas-claude.json (para preencher) e chave.json (fechada até as notas)
     python docs/fase2/cegas.py --revelar
         -> resultado.json: por modelo e por avaliador, a fração de textos com nota 1 ou 2 em cada critério,
-           e os critérios da fase (coerência >= 25%, assunto >= 50%, português no máximo 10 pontos abaixo do mini)
+           e os critérios da fase (coerência >= 25%, assunto >= 50%, português no máximo 10 pontos abaixo do mini).
+           Traz também a medida da Fase 1.5 (pontos sobre o máximo, ``*_pontos``), que é outra conta: os números
+           de partida do ROADMAP ("o mini fica em torno de 10%", "assunto 35%") estão nela
 
 48 textos por modelo: os 12 começos fixos, cada um do jeito do serviço (sementes 1 e 2) e em sorteio cru
 (sementes 1 e 2). Os dois avaliadores dão as notas em arquivos separados, sem ver a chave nem as notas do outro.
@@ -75,6 +77,9 @@ def revelar() -> dict:
                      **{criterio: round(100 * float(np.mean(np.array(lista)[:, i] >= 1)), 1)
                         for i, criterio in enumerate(CRITERIOS)},
                      **{f"{criterio}_media": round(float(np.mean(np.array(lista)[:, i])), 3)
+                        for i, criterio in enumerate(CRITERIOS)},
+                     # a medida da Fase 1.5 (pontos sobre o máximo), para comparar com os números de lá
+                     **{f"{criterio}_pontos": round(100 * float(np.mean(np.array(lista)[:, i])) / 2, 1)
                         for i, criterio in enumerate(CRITERIOS)}}
             for modelo, lista in sorted(por_modelo.items())}
     criterios = {}

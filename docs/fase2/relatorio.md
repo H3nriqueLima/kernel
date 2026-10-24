@@ -1,18 +1,25 @@
 # Fase 2 — Estudo de escala e cérebro candidato
 
-K.E.R.N.E.L 0.5.1 · 16 a 18/10/2026 · branch `estabilizacao-0.5`
+K.E.R.N.E.L 0.5.1 · treinos de 16 a 18/10/2026, avaliação às cegas revelada em 24/10 · branch `estabilizacao-0.5`
 
-**Resultado:** o cérebro candidato é o tamanho **grande** (40,1 milhões de parâmetros, 12 camadas × 512). Ele mede **2,969 nats por token no teste fixo** (1,323 bits por byte); o teto do mini, medido na mesma rodada, faz 3,036.
+**Resultado:** o tamanho **grande** (40,1 milhões de parâmetros, 12 camadas × 512) é o melhor cérebro já treinado no projeto pela perda: **2,969 nats por token no teste fixo** (1,323 bits por byte), contra 3,036 do teto do mini medido na mesma rodada. **Mas ele não passou no portão da fase: a coerência não melhorou de um jeito que um leitor note.**
 
-- **Critério de perda:** o pedido era 2,986 ou menos, e o candidato tem 0,017 de folga. O ganho contra o mini é 0,067.
-- **Portão:**
-  - O candidato carrega e responde pelo serviço.
-  - A inferência em NumPy confere com o PyTorch (diferença de 2·10⁻⁵).
-  - Ele gera 49 tokens por segundo na CPU (o mínimo pedido é 20).
-  - Os 375 testes passam (um é pulado, como antes).
-- **O que falta:**
-  - **A avaliação às cegas**, que decide os critérios de coerência, assunto e português. As notas do Claude foram gravadas antes de abrir a chave (commit `0c0e419`); faltam as do Henrique.
-  - **A repetição do ganho numa segunda semente.** Ela foi cancelada pelo Henrique no meio, para a continuação usar o resto do orçamento.
+| Critério | Exigência | Candidato | Situação |
+|---|---|---|---|
+| Perda no teste fixo | ≤ 2,986 | 2,969 | **Cumprido** (folga de 0,017; −0,067 contra o mini) |
+| Repetição numa segunda semente | o ganho em 60 mi se repete | — | **Não verificado** (cancelada pelo Henrique para dar horas à continuação) |
+| Coerência (nota 1 ou 2) | ≥ 25% nos dois avaliadores | Henrique 2%, Claude 29% | **Não cumprido** |
+| Assunto (nota 1 ou 2) | ≥ 50% nos dois | Henrique 60%, Claude 65% | Cumprido, mas o mini também cumpre (63% nos dois) |
+| Português (nota 1 ou 2) | no máximo 10 pontos abaixo do mini | 96% nos dois, contra 98% e 96% do mini | Cumprido |
+| Portão técnico (serviço, NumPy contra PyTorch, ≥ 20 tokens/s, testes) | — | 49 tokens/s, 2·10⁻⁵, 375 testes | **Cumprido** |
+
+**A pergunta da fase:** quanto de capacidade a mais compra de coerência?
+- **Resposta:** nesta escala, quase nada que um leitor note. São 3,5 contra 40 milhões de parâmetros e ~111 milhões de tokens.
+- **O que melhorou:** a perda caiu 0,067 e o português melhorou um pouco (a média das notas subiu nos dois avaliadores).
+- **O que não mudou:**
+  - o assunto ficou igual;
+  - nos textos do candidato, o Henrique viu coerência em 1 de 48; nos do mini, em nenhum.
+- **A Fase 1.5 já tinha mostrado o mesmo no mini:** a perda cai e o texto não ganha sentido.
 
 O plano foi registrado num commit antes do primeiro treino ([plano.md](plano.md)). Tudo o que mudou depois está na seção "Alterações depois do registro" de lá, com data.
 
@@ -143,9 +150,69 @@ O plano previa repetir o treino de comparação do finalista com a semente 2026 
 - **Rubrica:** [a da Fase 1.5](../fase15/rubrica.md).
 - **Notas do Claude:** gravadas em `cegas/notas-claude.json` e num commit (`0c0e419`) antes de qualquer pessoa abrir `cegas/chave.json`. O Claude também não abriu os relatórios do candidato e do teto, onde os textos aparecem com o nome do modelo.
 - **Uma ressalva:** 24 dos 48 textos do teto são idênticos aos que o Claude pontuou na Fase 1.5 (mesmo modelo, mesmos começos, mesmas sementes). Ele contou isso depois de gravar as notas. Na hora de pontuar não reconheceu nenhum com segurança, mas para ele a avaliação é às cegas só em parte.
-- **Notas do Henrique:** pendentes, em `cegas/notas-henrique.json`. Depois delas, `python docs/fase2/cegas.py --revelar` abre a chave e confere os critérios 2 a 4.
+- **Notas do Henrique:** gravadas em `cegas/notas-henrique.json` e num commit (`75f2454`) antes de abrir a chave.
+- **A chave** foi aberta depois, por `cegas.py --revelar` ([resultado.json](cegas/resultado.json)).
 
-**Até lá, não dá para dizer se a perda menor virou texto melhor.** Na Fase 1.5 não virou.
+### O resultado
+
+Fração dos 48 textos de cada modelo com nota 1 ou 2, que é a medida dos critérios:
+
+| Critério | Henrique: candidato | Henrique: mini | Claude: candidato | Claude: mini |
+|---|---|---|---|---|
+| Português | 95,8% | 97,9% | 95,8% | 95,8% |
+| Assunto | 60,4% | 62,5% | 64,6% | 62,5% |
+| Coerência | **2,1%** | 0% | **29,2%** | 12,5% |
+
+O critério de coerência pedia 25% nos dois avaliadores, e o Henrique deu nota 1 a um texto só do candidato:
+
+> **T065** · *A cidade de São Paulo*, em Portugal, é uma das mais importantes áreas da região. O município conta com as principais áreas do transporte público. É o principal centro de produção agrícola do estado. O Centro de Saúde Metropolitana de Lisboa.
+
+O Claude deu a mesma nota a esse texto: frases que se aguentam uma a uma, com um fato errado na primeira.
+
+### Candidato contra mini, texto por texto
+
+Cada texto do candidato tem um par do mini com o mesmo começo, o mesmo jeito de gerar e a mesma semente. Contando em quantos pares cada um teve a nota maior:
+
+| Critério | Henrique: candidato melhor / pior / empate | Claude: candidato melhor / pior / empate |
+|---|---|---|
+| Português | 15 / 9 / 24 (p = 0,31) | 15 / 6 / 27 (p = 0,08) |
+| Assunto | 9 / 12 / 27 (p = 0,66) | 12 / 13 / 23 (p = 1,0) |
+| Coerência | 1 / 0 / 47 (p = 1,0) | 11 / 3 / 34 (p = 0,06) |
+
+O p é do teste do sinal, bilateral.
+
+- **Português:** o candidato escreve um pouco melhor nos dois avaliadores, mas sem significância com 48 pares.
+- **Assunto:** não muda.
+- **Coerência:** para o Claude, o ganho está quase todo no jeito do serviço (46% contra 12% do mini); no sorteio cru, os dois ficam em 12%. Para o Henrique, não há ganho.
+
+### Por que os avaliadores discordam na coerência
+
+A concordância é boa no assunto (kappa de Cohen 0,73 em "nota 1 ou 2") e quase nula na coerência (0,08). As 19 discordâncias de coerência são todas do mesmo tipo: o Claude deu 1 e o Henrique, 0. Um exemplo é "Albert Einstein foi um dos líderes mais influentes da história da Somália...".
+
+- **A rubrica permite as duas leituras.** Ela dá 1 a "fatos claramente errados" e 0 a "afirmações absurdas", e um fato errado desse tamanho é as duas coisas.
+- **O Claude** leu como fato errado em frases plausíveis.
+- **O Henrique** leu como absurdo, e só um texto em 96 escapou disso.
+
+**Para a próxima rodada,** a rubrica precisa de exemplos combinados de cada nota antes de pontuar. A leitura que importa é a do Henrique, porque é ele quem conversa com o cérebro.
+
+### Duas notas sobre a medida
+
+- **O Claude mudou pouco entre as rodadas.** Ele pontuou de novo 24 textos do teto que já tinham passado por ele na Fase 1.5, sem saber quais eram. Os resultados:
+  - coerência: igual em 92% dos textos (kappa 0,70);
+  - assunto: igual em 88% (kappa 0,80);
+  - português: igual em só 67%, e ficou mais severo (média 1,17 antes, 1,00 agora).
+- **A conta da Fase 1.5 era outra.** Lá a porcentagem era de pontos: a soma das notas sobre o máximo. Os números de partida do ROADMAP vêm dela ("o mini fica em torno de 10%", "assunto 35%", "português 71% para 58%"). Os critérios desta fase pedem a fração de textos com nota 1 ou 2, e foram aplicados assim.
+  - **Na conta de pontos, o resultado seria este:**
+
+    | Critério | Henrique: candidato | Henrique: mini | Claude: candidato | Claude: mini |
+    |---|---|---|---|---|
+    | Português | 69,8% | 64,6% | 61,5% | 52,1% |
+    | Assunto | 40,6% | 43,8% | 42,7% | 44,8% |
+    | Coerência | 1,0% | 0% | 14,6% | 6,2% |
+
+  - **A conclusão não muda.** Nas duas contas a coerência fica longe do pedido, o assunto fica igual ao do mini e o português não cai. O assunto, que passa na conta dos critérios, não passaria na de pontos; mas o mini também passa na primeira, então esse critério, do jeito que ficou escrito, não separa os dois.
+
+A análise completa está em [analise_cegas.py](analise_cegas.py) e [cegas/analise.txt](cegas/analise.txt).
 
 ## Portão de saída
 
@@ -153,7 +220,9 @@ O plano previa repetir o treino de comparação do finalista com a semente 2026 
 |---|---|
 | Perda no teste ≤ 2,986 | **Sim:** 2,969 |
 | O ganho se repete numa segunda semente | **Não verificado:** cancelada por decisão do Henrique. No único ponto medido, as duas sementes ficam à frente do mini |
-| Coerência ≥ 25%, assunto ≥ 50%, português no máximo 10 pontos abaixo do mini | **Pendente:** as notas do Henrique |
+| Coerência ≥ 25% nos dois avaliadores | **Não:** Henrique 2,1%, Claude 29,2% |
+| Assunto ≥ 50% nos dois | **Sim:** 60,4% e 64,6% (o mini também: 62,5% nos dois) |
+| Português no máximo 10 pontos abaixo do mini | **Sim:** 95,8% nos dois avaliadores, contra 97,9% e 95,8% do mini |
 | Sem regressão nos testes | **Sim:** 375 testes, 374 passam e 1 é pulado (o mesmo de antes: o Windows não deixa criar atalho simbólico sem ser administrador). Linhas de teste trocadas: 3, todas mais exigentes que as antigas (a contagem de textos do protocolo v2, e um teste de retomada que ficou determinístico) |
 | Carrega e responde no serviço pela inferência NumPy | **Sim:** um serviço de verdade, numa porta à parte, com uma cópia do candidato. Subiu em 12,6 s e respondeu ao "completa: ..." em 1,9 s ([portao.json](portao.json)) |
 | NumPy conferido contra o PyTorch | **Sim:** 1,5 a 2,4·10⁻⁵ em quatro janelas do teste fixo, o mesmo token mais provável em todas as posições |
@@ -164,8 +233,11 @@ O plano previa repetir o treino de comparação do finalista com a semente 2026 
 - **Pesos:** `dados/fase2/candidato/cerebro/modelo.npz`, 152,8 MB, fora do Git.
 - **Impressão SHA-256:** `79c86f632b9f326d9c926a78888fdf5fd7db733e0a6b80f7d485c898a5fdcad3` (também em `modelo.npz.sha256`).
 - **Para continuar treinando:** o checkpoint fica na mesma pasta, com o otimizador e a posição da passada.
-- **O serviço ainda usa o teto do mini.** Instalar o candidato depende do Henrique e pede o serviço desligado: `python -m kernel cerebro instalar --de dados\fase2\candidato\cerebro`. Ele faz uma cópia de segurança antes.
-- **Por que esperar:** a resposta fica ~5 vezes mais lenta, e a avaliação às cegas ainda não disse se o texto melhorou.
+- **O serviço continua com o teto do mini, e recomendo que fique assim.**
+  - **O que o candidato daria:** perda menor e um português um pouco melhor.
+  - **O que custaria:** respostas ~5 vezes mais lentas e pesos 11 vezes maiores.
+  - **O que não daria:** coerência que o Henrique note.
+- **Se quiser trocar mesmo assim:** com o serviço desligado, `python -m kernel cerebro instalar --de dados\fase2\candidato\cerebro`. O comando faz uma cópia de segurança antes.
 
 ## Tempo de placa
 
@@ -182,6 +254,11 @@ A comparação levou 8 h a mais que o previsto. Desse total, 4,8 h vieram do gra
 
 ## O que deu errado
 
+- **A conta das notas mudou de uma fase para a outra, por erro do Claude.**
+  - **Na Fase 1.5:** o relatório chamou de "porcentagem" uma conta de pontos (a soma das notas sobre o máximo).
+  - **Nos critérios desta fase:** eles foram escritos como fração de textos com nota 1 ou 2, com os números de partida da outra conta.
+  - **Consequência:** isso só apareceu ao abrir a chave. As duas contas estão acima; a conclusão é a mesma nas duas.
+
 - **17/10, 04:30 — falta de memória de vídeo:** o pequeno e o grande falharam logo no começo.
   - **Causa:** cada um começou no mesmo segundo em que o processo anterior terminava, antes de a placa devolver a memória.
   - **Efeito em cadeia:** o pipeline do finalista começou sozinho com só dois tamanhos prontos, escolheu o medio e lançou a segunda semente dele. Interrompi em 10 minutos.
@@ -193,19 +270,19 @@ A comparação levou 8 h a mais que o previsto. Desse total, 4,8 h vieram do gra
 
 ## Recomendação
 
-1. **O grande é o cérebro candidato.**
-   - **Ganhos:** é o único tamanho que passou o critério de perda, e com a mesma quantidade de texto todo aumento de tamanho rendeu.
-   - **Limite:** é também o maior que a RX 570 treina, com lote 2 e ~1.180 tokens/s.
-   - **Fora de alcance:** tamanhos maiores ficam para outra placa ou para a nuvem, decisão que não foi tomada.
-2. **Antes de instalar, a avaliação às cegas.** É ela que diz se 0,067 de perda a menos virou texto com sentido. Se não virou, o próximo passo não é mais tamanho, e sim olhar o corpus e a avaliação de conversa.
-3. **Fechar a repetição:** terminar a segunda semente (~12 h de placa, com as medidas) quando houver tempo, para o critério 1 valer por inteiro.
-4. **Mais treino ainda rende:**
-   - a validação interna caía ~0,007 por hora no fim;
-   - a passada leu só 14,4% do corpus;
-   - a continuação pode seguir do checkpoint, pelo serviço ou pela linha de comando.
-5. **Depois:**
-   - o experimento de corpus (um corpus mais simples em português, com fonte e licença verificadas antes de baixar);
-   - as variações de largura, profundidade e contexto no grande, uma de cada vez.
+1. **Não instalar o candidato como padrão.** O grande fica guardado, com checkpoint, como a melhor base do projeto pela perda. Ele é o maior que a RX 570 treina (lote 2, ~1.180 tokens/s); tamanhos maiores ficariam para outra placa ou para a nuvem.
+2. **Mais tamanho não é o próximo passo.**
+   - **O que o tamanho comprou:** de 3,5 para 40 milhões de parâmetros, a perda caiu bem e o português melhorou um pouco, mas a coerência que o Henrique vê continuou perto de zero.
+   - **O que a extrapolação promete:** 80 a 120 milhões de parâmetros dariam ~0,02 a 0,04 de perda a mais (estimativa), e as duas fases mostram que perda nesse tamanho não vira sentido.
+3. **O próximo passo é o que foi deixado para depois:**
+   - **O experimento de corpus:** um corpus mais simples em português, com fonte e licença verificadas antes de baixar. A Wikipédia em pedaços de 256 tokens talvez seja difícil demais para um modelo deste tamanho aprender a encadear ideias.
+   - **A avaliação de conversa,** separada da de linguagem.
+4. **Antes da próxima avaliação à mão, calibrar a rubrica.**
+   - **O problema:** a coerência teve kappa de 0,08 entre os avaliadores.
+   - **O que combinar:** exemplos de cada nota, sobretudo de como tratar fatos errados, para "1" querer dizer a mesma coisa para os dois.
+   - **Os critérios da próxima fase:** escrever na mesma conta da linha de base. O assunto ≥ 50%, do jeito que ficou, o mini já cumpria.
+5. **A segunda semente perdeu prioridade.** Ela confirmaria o ganho de perda (~12 h de placa), mas o candidato já não passa no portão pela coerência.
+6. **Mais treino no grande ainda baixa a perda.** A validação interna caía ~0,007 por hora no fim, e a passada leu 14,4% do corpus. Pelo que as duas fases mostraram, isso não deve mudar a leitura.
 
 ## Como reproduzir
 

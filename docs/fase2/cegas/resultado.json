@@ -1,0 +1,61 @@
+{
+ "henrique": {
+  "candidato": {
+   "textos": 48,
+   "portugues": 95.8,
+   "assunto": 60.4,
+   "coerencia": 2.1,
+   "portugues_media": 1.396,
+   "assunto_media": 0.812,
+   "coerencia_media": 0.021,
+   "portugues_pontos": 69.8,
+   "assunto_pontos": 40.6,
+   "coerencia_pontos": 1.0
+  },
+  "mini": {
+   "textos": 48,
+   "portugues": 97.9,
+   "assunto": 62.5,
+   "coerencia": 0.0,
+   "portugues_media": 1.292,
+   "assunto_media": 0.875,
+   "coerencia_media": 0.0,
+   "portugues_pontos": 64.6,
+   "assunto_pontos": 43.8,
+   "coerencia_pontos": 0.0
+  }
+ },
+ "claude": {
+  "candidato": {
+   "textos": 48,
+   "portugues": 95.8,
+   "assunto": 64.6,
+   "coerencia": 29.2,
+   "portugues_media": 1.229,
+   "assunto_media": 0.854,
+   "coerencia_media": 0.292,
+   "portugues_pontos": 61.5,
+   "assunto_pontos": 42.7,
+   "coerencia_pontos": 14.6
+  },
+  "mini": {
+   "textos": 48,
+   "portugues": 95.8,
+   "assunto": 62.5,
+   "coerencia": 12.5,
+   "portugues_media": 1.042,
+   "assunto_media": 0.896,
+   "coerencia_media": 0.125,
+   "portugues_pontos": 52.1,
+   "assunto_pontos": 44.8,
+   "coerencia_pontos": 6.2
+  }
+ },
+ "criterios": {
+  "candidato": {
+   "coerencia_25": false,
+   "assunto_50": true,
+   "portugues_10": true
+  }
+ }
+}

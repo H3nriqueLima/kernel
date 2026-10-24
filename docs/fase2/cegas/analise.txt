@@ -1,0 +1,27 @@
+== concordância entre avaliadores (96 textos)
+portugues  exata 67% kappa 0.29 | binária (>=1) 97% kappa 0.56 | médias H 1.34 C 1.14
+assunto    exata 78% kappa 0.66 | binária (>=1) 88% kappa 0.73 | médias H 0.84 C 0.88
+coerencia  exata 80% kappa 0.08 | binária (>=1) 80% kappa 0.08 | médias H 0.01 C 0.21
+== por modo (fração com nota >=1)
+henrique candidato servico 24 ['port 92%', 'assu 67%', 'coer 4%']
+henrique candidato sorteio 24 ['port 100%', 'assu 54%', 'coer 0%']
+henrique mini servico 24 ['port 100%', 'assu 71%', 'coer 0%']
+henrique mini sorteio 24 ['port 96%', 'assu 54%', 'coer 0%']
+claude candidato servico 24 ['port 96%', 'assu 75%', 'coer 46%']
+claude candidato sorteio 24 ['port 96%', 'assu 54%', 'coer 12%']
+claude mini servico 24 ['port 100%', 'assu 67%', 'coer 12%']
+claude mini sorteio 24 ['port 92%', 'assu 58%', 'coer 12%']
+== pareado: o mesmo começo, modo e semente, candidato contra mini, critério por critério
+henrique portugues  candidato melhor em 15, pior em 9, empate 24 | sinal bilateral p=0.307
+henrique assunto    candidato melhor em 9, pior em 12, empate 27 | sinal bilateral p=0.664
+henrique coerencia  candidato melhor em 1, pior em 0, empate 47 | sinal bilateral p=1.000
+claude   portugues  candidato melhor em 15, pior em 6, empate 27 | sinal bilateral p=0.078
+claude   assunto    candidato melhor em 12, pior em 13, empate 23 | sinal bilateral p=1.000
+claude   coerencia  candidato melhor em 11, pior em 3, empate 34 | sinal bilateral p=0.057
+== o texto com coerência >=1 do Henrique
+T065 [2, 2, 1] candidato servico | Claude: [2, 2, 1]
+== Claude: as mesmas 24 notas do teto na Fase 1.5 e agora
+pares: 24 | todos do teto agora: True
+portugues  exata 67% kappa 0.06 | >=1 antes 23/24 agora 22/24 | média antes 1.17 agora 1.00
+assunto    exata 88% kappa 0.80 | >=1 antes 11/24 agora 13/24 | média antes 0.71 agora 0.83
+coerencia  exata 92% kappa 0.70 | >=1 antes 4/24 agora 4/24 | média antes 0.17 agora 0.17
