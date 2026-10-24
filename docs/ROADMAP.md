@@ -65,15 +65,20 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 ## Fase 2 — Estudo de escala e cérebro candidato
 
-**Situação:** concluída em 24/10/2026, **sem passar no portão**. O candidato não cumpriu o critério de coerência. Veja o [relatório](fase2/relatorio.md).
+**Situação:** concluída em 24/10/2026, **sem passar no portão**. Veja o [relatório](fase2/relatorio.md).
 
-- **Candidato:** o tamanho grande (40,1 mi de parâmetros), com **2,969 no teste fixo** (1,323 bits por byte), dentro do critério de perda.
-- **Portão técnico:** cumprido (serviço, NumPy contra PyTorch, 49 tokens/s na CPU, testes).
-- **Avaliação às cegas:** coerência em 2% dos textos para o Henrique e 29% para o Claude; o pedido era 25% nos dois. O assunto ficou igual ao do mini, e o português subiu um pouco.
-- **Segunda semente:** cancelada pelo Henrique, então a repetição do ganho de perda ficou sem verificar.
-- **Serviço:** continua com o teto do mini.
+- **Perda: cumprido.** O tamanho grande (40,1 mi de parâmetros) fez **2,969 nats por token no teste fixo** (1,323 bits por byte), contra 3,036 do teto do mini. O pedido era 2,986 ou menos.
+- **Portão técnico: cumprido.** Funciona no serviço, o NumPy confere com o PyTorch, gera 49 tokens/s na CPU e os testes não regrediram.
+- **Coerência: NÃO cumprido.** Fração de textos com nota 1 ou 2: Henrique 2,1% (1 de 48) e Claude 29,2%. O pedido era 25% nos dois avaliadores. A concordância entre os dois na coerência foi quase nula (kappa de Cohen 0,08).
+- **Segunda semente: NÃO verificado.** Ela foi cancelada por decisão do Henrique, para dar as horas à continuação. Por isso a repetição do ganho de perda não foi medida.
+- **Assunto: não separou os modelos.** O candidato passou (60,4% e 64,6%), mas o teto do mini também passa (62,5% nos dois).
+- **Português: cumprido**, sem queda contra o mini.
+- **Decisão:** o candidato NÃO vira o padrão.
+  - O serviço continua com o teto do mini.
+  - O checkpoint do grande fica guardado em `dados/fase2/candidato/cerebro`, com os pesos (SHA-256 `79c86f63…`), o otimizador e a posição da passada.
+- **Erro de conta nas duas fases:** a "porcentagem" da Fase 1.5 era de pontos (a soma das notas sobre o máximo). Os critérios da Fase 2 foram escritos como fração de textos com nota 1 ou 2, mas com os números de partida da outra conta. O relatório traz as duas contas, e a conclusão é a mesma nas duas. **A partir daqui, toda conta é fração de textos com nota 1 ou 2.**
 
-**A resposta da fase:** de 3,5 para 40 milhões de parâmetros, a perda cai bem, mas a coerência que um leitor vê, não. O próximo passo recomendado não é mais tamanho; é o experimento de corpus, a avaliação de conversa e uma rubrica calibrada entre os dois avaliadores.
+**A resposta da fase:** de 3,5 para 40 milhões de parâmetros, a perda cai bem, mas a coerência que o Henrique vê, não.
 
 **Objetivo:** descobrir com dados quanto de capacidade a mais compra de coerência e o que a RX 570 aguenta, antes de qualquer gasto.
 
