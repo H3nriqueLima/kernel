@@ -111,6 +111,38 @@ O fechamento de cada tarefa, o portão de saída e os riscos aceitos estão em [
 
 **Portão de saída:** o candidato atinge os quatro critérios acima de forma reprodutível, sem regressão nos testes e com inferência funcionando no serviço (carrega e responde pela inferência NumPy, conferida contra o PyTorch como na Fase 1) e gerando pelo menos 20 tokens por segundo na CPU.
 
+## Fase 2.5 — Rubrica calibrada e experimento de corpus simples
+
+**Situação:** a fazer.
+
+**Objetivo:** descobrir se a falta de coerência vem do corpus (a Wikipédia em pedaços de 256 tokens, difícil demais para modelos pequenos) e não só do tamanho, e calibrar a avaliação à mão para que ela meça a mesma coisa para os dois avaliadores.
+
+**Régua:** na Wikipédia, o teto do mini (3,036 nats, 1,353 bits por byte) e o candidato grande (2,969 nats, 1,323 bits por byte). Na avaliação à mão, a linha de base nova da rubrica calibrada, pontuada na Etapa 1 sobre os 96 textos da Fase 2.
+
+**Critérios fixados antes de rodar** (propostas de 24/10/2026, a rever só antes da Etapa 3, nunca depois de ver resultados):
+
+- Todas as contas são fração de textos com nota 1 ou 2, 48 textos por modelo, notas de dois avaliadores gravadas antes de abrir a chave.
+- Concordância: kappa de Cohen de pelo menos 0,6 em coerência interna, medido na linha de base nova. Sem isso, não se passa à Etapa 2.
+- Coerência interna: pelo menos 25% dos textos com nota 1 ou 2 nos dois avaliadores, e pelo menos o dobro da linha de base do mini na Wikipédia.
+- Português: no máximo 10 pontos percentuais abaixo da linha de base do mini.
+- Perda no corpus simples: só relatada, sem critério de aprovação, porque a distribuição muda. Bits por byte para comparar entre tokenizadores.
+- Custo na Wikipédia: relatado, sem critério.
+
+**Tarefas:**
+
+- Fechar a Fase 2 no ROADMAP.md (Etapa 0).
+- Rubrica nova com notas separadas de coerência interna e factualidade, exemplos combinados e re-pontuação dos 96 textos da Fase 2.
+- Escolher o corpus simples com fonte e licença verificadas, e aprovar desenho e orçamento antes de baixar ou treinar.
+- Treinar o mini (e o médio, se couber no orçamento) no corpus simples. Medir no teste próprio e na Wikipédia.
+- Avaliação às cegas com a rubrica calibrada.
+- Registrar no histórico do serviço os treinos feitos pela linha de comando.
+
+**Entrega:** relatório com a resposta direta: um corpus simples traz coerência interna que o Henrique nota, e a que custo?
+
+**Portão de saída:** os critérios acima, de forma reprodutível. Se não passar, o resultado vale: o relatório diz que coerência não veio nem com corpus simples e apresenta os números das Fases 1, 1.5, 2 e 2.5 para a decisão sobre GPU alugada (Fase 5 do plano), sem iniciar nenhum gasto.
+
+**Regras:** nenhum aluguel de GPU nem gasto sem a minha aprovação. Treino longo continua pedindo confirmação. Orçamento de placa aprovado por mim na Etapa 2. Mudanças em arquivos selados são revisadas e seladas por mim. Ganho num corpus simples não prova ganho na Wikipédia, e o relatório não pode dizer o contrário.
+
 ## Fases seguintes
 
 A definir.
